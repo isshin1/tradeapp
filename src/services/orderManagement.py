@@ -28,7 +28,7 @@ def buyOrder(token, order_type, price, bof):
             logger.info(f"sl order with sl as {price} and buy price at {price + 4}")
             price = price + 8
 
-        # return if last trade was within half hour closing of previous trade
+        # return if last trade was within 20m of closing of previous trade
         minutes_left = riskManagementobj.overTrading()
         if minutes_left:
             websocketService.send_toast("overtrading", f"wait for {minutes_left} minutes")
@@ -46,11 +46,13 @@ def buyOrder(token, order_type, price, bof):
         # TODO: testing
         # ltps[nifty_fut_token] = 22950
 
-        fut_ltp = ltps[nifty_fut_token]
-        if not decisionPoints.checkTradeValidity(fut_ltp, optionType):
-            websocketService.send_toast("Wrong trade", "Price not near any DP")
-            logger.info(f"Wrong trade, Price not near any DP or DP already traded")
-            return
+
+        # if datetime.now() >= datetime.now().replace(hour=11, minute=0, second=0, microsecond=0):
+        #     fut_ltp = ltps[nifty_fut_token]
+        #     if not decisionPoints.checkTradeValidity(fut_ltp, optionType):
+        #         websocketService.send_toast("Wrong trade", "Price not near any DP")
+        #         logger.info(f"Wrong trade, Price not near any DP or DP already traded")
+        #         return
 
 
         if tradeManager.ltps[token] < price - 5 and order_type == "LIMIT":
@@ -133,9 +135,11 @@ def cancelOrder(orderId):
 
 def getOrderBook():
     orders = dhan_api.get_orderbook()
-    validOrders = orders[orders["orderStatus"] == "TRADED"].reset_index(drop=True)
-    validOrders = validOrders[['orderId', 'transactionType', 'orderType', 'tradingSymbol', 'exchangeTime', 'filledQty', 'averageTradedPrice']]
-    orderFile = 'orderData/'+ str(datetime.now().date()) + '.csv'
-    validOrders.to_csv(orderFile, index=True)
+    try:
+        validOrders = orders[orders["orderStatus"] == "TRADED"].reset_index(drop=True)
+        validOrders = validOrders[['orderId', 'transactionType', 'orderType', 'tradingSymbol', 'exchangeTime', 'filledQty', 'averageTradedPrice']]
+        orderFile = 'data/orderData/'+ str(datetime.now().date()) + '.csv'
+        validOrders.to_csv(orderFile, index=True)
+    except Exception as e:
+        logger.error(f"error in downloading orderData {e}")
 
-    pass

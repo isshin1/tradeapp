@@ -14,7 +14,6 @@ import warnings
 from typing import Tuple, Dict
 from collections import Counter
 import urllib.parse
-
 warnings.filterwarnings("ignore", category=FutureWarning)
 print("Codebase Version 3")
 
@@ -38,9 +37,11 @@ class Tradehull:
 
 		# Create a file handler
 		date_str = str(datetime.datetime.now().today().date())
-		file = BASE_DIR + '/logs/' + date_str + '.log'
-		file_handler = logging.FileHandler(file)
+		file = BASE_DIR + '/data/logs/' + date_str + '.log'
+		file_handler = logging.FileHandler(file, mode='a')
 		file_handler.setLevel(log_level)
+
+		self.DEP_DIR = BASE_DIR + '/Dependencies/'
 
 		# Create a console handler
 		console_handler = logging.StreamHandler()
@@ -99,29 +100,29 @@ class Tradehull:
 		global instrument_df
 		current_date = time.strftime("%Y-%m-%d")
 		expected_file = 'all_instrument ' + str(current_date) + '.csv'
-		for item in os.listdir("Dependencies"):
+		for item in os.listdir(self.DEP_DIR):
 			path = os.path.join(item)
 
 			if (item.startswith('all_instrument')) and (current_date not in item.split(" ")[1]):
-				if os.path.isfile("Dependencies/" + path):
-					os.remove("Dependencies/" + path)
+				if os.path.isfile(self.DEP_DIR + path):
+					os.remove(self.DEP_DIR + path)
 
-		if expected_file in os.listdir("Dependencies"):
+		if expected_file in os.listdir(self.DEP_DIR):
 			try:
 				print(f"reading existing file {expected_file}")
-				instrument_df = pd.read_csv("Dependencies/" + expected_file, low_memory=False)
+				instrument_df = pd.read_csv( self.DEP_DIR + expected_file, low_memory=False)
 			except Exception as e:
 				print(
 					"This BOT Is Instrument file is not generated completely, Picking New File from Dhan Again")
 				instrument_df = pd.read_csv("https://images.dhan.co/api-data/api-scrip-master.csv", low_memory=False)
 				instrument_df['SEM_CUSTOM_SYMBOL'] = instrument_df['SEM_CUSTOM_SYMBOL'].str.strip().str.replace(r'\s+', ' ', regex=True)
-				instrument_df.to_csv("Dependencies/" + expected_file)
+				instrument_df.to_csv(self.DEP_DIR + expected_file)
 		else:
 			# this will fetch instrument_df file from Dhan
 			print("This BOT Is Picking New File From Dhan")
 			instrument_df = pd.read_csv("https://images.dhan.co/api-data/api-scrip-master.csv", low_memory=False)
 			instrument_df['SEM_CUSTOM_SYMBOL'] = instrument_df['SEM_CUSTOM_SYMBOL'].str.strip().str.replace(r'\s+', ' ', regex=True)
-			instrument_df.to_csv("Dependencies/" + expected_file)
+			instrument_df.to_csv(self.DEP_DIR + expected_file)
 		return instrument_df
 
 	def correct_step_df_creation(self):

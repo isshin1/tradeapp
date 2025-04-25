@@ -1,7 +1,7 @@
 #
 from conf.config import *
 from apscheduler.schedulers.background import BackgroundScheduler
-from utils.misc import misc
+# from utils.misc import misc
 # from dateutil.relativedelta import TH, relativedelta
 
 from datetime import datetime, timedelta
@@ -233,6 +233,11 @@ def downloadCheck(force=False):
     if download or force:
         logger.info("Downloading candlestick data now")
         parse_indexes()
+        getOrderBook()
+        logger.info("stopping container now")
+        misc.closeContainer()
+
+
     else:
         logger.info("candle data already exists. skipping download")
 
@@ -242,6 +247,8 @@ def download_candlestick_data():
         logger.info("weekday, skipping candle download")
         return
 
+    getOrderBook()
+
     scheduler = BackgroundScheduler()
 
     now = datetime.now()
@@ -249,14 +256,14 @@ def download_candlestick_data():
 
     if now >= target_time:
         logger.info("downloading candlestick data")
-        scheduler.add_job(downloadCheck, 'date', run_date=now + timedelta(seconds=1))
-        scheduler.add_job(getOrderBook, 'date', run_date=now + timedelta(seconds=1))
+        scheduler.add_job(downloadCheck, 'date', run_date=now + timedelta(seconds=1), misfire_grace_time=30)
+        # scheduler.add_job(getOrderBook, 'date', run_date=now + timedelta(seconds=1))
 
     else:
         # Otherwise, schedule the task to run at the next 2 PM
         logger.info(f"adding job to download candlestick data for {target_time.strftime('%r')}")
-        scheduler.add_job(downloadCheck, 'date', run_date=target_time)
-        scheduler.add_job(getOrderBook, 'date', run_date=target_time)
+        scheduler.add_job(downloadCheck, 'date', run_date=target_time, misfire_grace_time=30)
+        # scheduler.add_job(getOrderBook, 'date', run_date=target_time)
 
     scheduler.start()
 

@@ -2,7 +2,7 @@
 from datetime import datetime
 
 from conf import websocketService
-from conf.config import dhan_api, shoonya_api, logger, nifty_fut_token
+from conf.config import dhan_api, shoonya_api, logger, nifty_fut_token, config
 from conf.websocketService import update_order_feed, send_toast
 from models.partialTrade import PartialTrade
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -14,6 +14,7 @@ import concurrent.futures
 from models.DecisionPoints import decisionPoints
 from models.TradeManager import tradeManager
 from models.candlestickData import candlestickData
+import time
 
 ltps = ()
 
@@ -69,45 +70,49 @@ def manageTrade(ltp, trade):
 
     # todo: find better logic
     if  targetPoints > 0:
-        if points >= 2.0 / 3 * targetPoints and trade.orderType == "STOP_LOSS":
-            logger.info("modifying sl order from STOP_LOSS to LIMIT")
-            logger.info(f"modifying trade {trade.__str__()}")
-            # ret = dhan_api.Dhan.modify_order(order_id=trade.orderNumber, order_type="LIMIT", leg_name="ENTRY_LEG",
-            #                                  quantity=trade.qty, price=trade.targetPrice, trigger_price=0, disclosed_quantity=0, validity='DAY')
+        try:
+            if points >= 2.0 / 3 * targetPoints and trade.orderType == "STOP_LOSS":
+                logger.info("modifying sl order from STOP_LOSS to LIMIT")
+                logger.info(f"modifying trade {trade.__str__()}")
+                # ret = dhan_api.Dhan.modify_order(order_id=trade.orderNumber, order_type="LIMIT", leg_name="ENTRY_LEG",
+                #                                  quantity=trade.qty, price=trade.targetPrice, trigger_price=0, disclosed_quantity=0, validity='DAY')
 
-            dhan_api.cancel_order(OrderID=trade.orderNumber)
+                dhan_api.cancel_order(OrderID=trade.orderNumber)
+                time.sleep(1) # to make sure order is cancelled and new order doesnt have margin issues
 
+                try:
+                    res = dhan_api.Dhan.place_order(security_id=trade.token, exchange_segment="NSE_FNO", transaction_type="SELL",
+                                                    quantity=trade.qty, order_type="LIMIT", product_type=trade.prd,
+                                                    price=trade.targetPoints + trade.entryPrice , trigger_price=0)
+                    logger.info(f"modified placed {trade.name} limit order")
+                    logger.info(res)
+                except Exception as e:
+                    logger.error("failed to place limit convert order {}".format(e))
+                else:
+                    trade.orderNumber = res['data']['orderId']
 
-            try:
+                trade.orderType = "LMT"
+                # trade.orderNumber = res['data']['orderId']
+                logger.info(f"{trade.name} sl order modified from STOP_LOSS to LMT with target {trade.entryPrice + trade.targetPoints}")
+            if points <= 1.0 / 3 * targetPoints and trade.orderType == "LMT":
+                logger.info("modifying target order from LIMIT to STOP_LOSS")
+                # ret = dhan_api.Dhan.modify_order(order_id=trade.orderNumber, order_type="STOP_LOSS", leg_name="ENTRY_LEG",
+                #                                  quantity=trade.qty, price=trade.slPrice, trigger_price=trade.slPrice + trade.diff, disclosed_quantity=0, validity='DAY')
+
+                dhan_api.cancel_order(OrderID=trade.orderNumber)
+                time.sleep(1)
+
                 res = dhan_api.Dhan.place_order(security_id=trade.token, exchange_segment="NSE_FNO", transaction_type="SELL",
-                                                quantity=trade.qty, order_type="LIMIT", product_type=trade.prd,
-                                                price=trade.targetPoints + trade.entryPrice , trigger_price=0)
-                logger.info(f"modified placed {trade.name} limit order")
-                logger.info(res)
-            except Exception as e:
-                logger.error("failed to place limit convert order {}".format(e))
-            else:
+                                                quantity=trade.qty, order_type="STOP_LOSS", product_type=trade.prd,
+                                                price=trade.slPrice, trigger_price=trade.slPrice + trade.diff)
+
+                trade.orderType = "STOP_LOSS"
                 trade.orderNumber = res['data']['orderId']
-
-            trade.orderType = "LMT"
-            # trade.orderNumber = res['data']['orderId']
-            logger.info(f"{trade.name} sl order modified from STOP_LOSS to LMT with target {trade.entryPrice + trade.targetPoints}")
-        if points <= 1.0 / 3 * targetPoints and trade.orderType == "LMT":
-            logger.info("modifying target order from LIMIT to STOP_LOSS")
-            # ret = dhan_api.Dhan.modify_order(order_id=trade.orderNumber, order_type="STOP_LOSS", leg_name="ENTRY_LEG",
-            #                                  quantity=trade.qty, price=trade.slPrice, trigger_price=trade.slPrice + trade.diff, disclosed_quantity=0, validity='DAY')
-
-            dhan_api.cancel_order(OrderID=trade.orderNumber)
-
-            res = dhan_api.Dhan.place_order(security_id=trade.token, exchange_segment="NSE_FNO", transaction_type="SELL",
-                                            quantity=trade.qty, order_type="STOP_LOSS", product_type=trade.prd,
-                                            price=trade.slPrice, trigger_price=trade.slPrice + trade.diff)
-
-            trade.orderType = "STOP_LOSS"
-            trade.orderNumber = res['data']['orderId']
-            logger.info(f"{trade.name} limit order modified from LIMIT to STOP_LOSS with sl {trade.slPrice}")
-            logger.info(res)
-
+                logger.info(f"{trade.name} limit order modified from LIMIT to STOP_LOSS with sl {trade.slPrice}")
+                logger.info(res)
+        except Exception as e:
+            logger.error(f"error in modiftying order with fix target at time {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
+            logger.error(e)
 
     if trade.targetPoints == 0:
 
@@ -134,7 +139,7 @@ def manageTrade(ltp, trade):
                     trade.slPrice = new_sl
         except Exception as e:
             logger.error(f"error in fetching last swing point at time {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
-
+            logger.error(e)
 
         ## (B) keeping sl 20% below trade peak points
         new_sl = round(ltp * 0.8, 1)
@@ -157,7 +162,7 @@ def manageTrade(ltp, trade):
                         trade.slPrice = new_sl
         except Exception as e:
             logger.error(f"error in getting price below dp at time {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
-
+            logger.error(e)
 
     if ltp < trade.maxSlPrice:
         logger.info("limit sl order crossed, exiting all trades with market orders")
@@ -179,6 +184,9 @@ def exit_all_trades(trade):
         product_type=trade.prd,
         price=0
         )
+        trade.status = 2
+        tradeManager.updatePartialTrade(trade)
+        # new order placed, how will system know trade is over ?
         # dhan_api.cancel_all_orders()
         # tradeManager.removeTrade(trade)
     except Exception as e:
@@ -238,8 +246,8 @@ def createTrade(token, order_update):
         qty2 = (half // minLotSize) * minLotSize
         qty1 = qty - qty2
 
-        #TODO: changfe it
-        target1, target2 = 30, 30
+
+        target1, target2 = config['intraday']['indexes'][0]['targets']
         trade1 = PartialTrade(
             name="trade1", status=0, qty=qty1, entryPrice=entryPrice, slPrice=slPrice, maxSlPrice=maxSlPrice,
             targetPoints=target1, orderType="STOP_LOSS", prd=prd, exch="NSE_NFO", tsym=tsym,

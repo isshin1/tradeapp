@@ -11,7 +11,7 @@ from api.endpoints import riskController , testController, orderController, poll
 from fastapi.middleware.cors import CORSMiddleware
 
 import uvicorn
-
+import os, stat
 from conf.websocketService import connection_manager
 from services.candleDownload import download_candlestick_data
 # Initialize the FastAPI app
@@ -42,6 +42,22 @@ async def startup_function():
 # Define the shutdown function
 async def shutdown_function():
     print("Application is shutting down!")
+
+    mode = 0o777
+    path = 'data'
+    for root, dirs, files in os.walk(path):
+        # Set permission for directories
+        for dir_ in dirs:
+            full_dir_path = os.path.join(root, dir_)
+            os.chmod(full_dir_path, mode)
+
+        # Set permission for files
+        for file_ in files:
+            full_file_path = os.path.join(root, file_)
+            os.chmod(full_file_path, mode)
+
+    # Set permission for the root directory itself
+    os.chmod(path, mode)
 
 # Define the lifespan context
 @asynccontextmanager

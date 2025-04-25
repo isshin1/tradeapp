@@ -61,7 +61,7 @@ class RiskManagement:
         return 0
 
     def endSession(self):
-        logger.info("turning killswitch on")
+        logger.info(f"turning killswitch on with trades {self.tradeCount} and pnl {self.pnl}")
         dhan_api.cancel_all_orders()
         dhan_api.kill_switch('ON')
         dhan_api.kill_switch('OFF')

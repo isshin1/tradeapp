@@ -5,7 +5,7 @@ import math
 import pandas as pd
 
 import argparse
-import docker
+import docker, socket
 import requests
 import nsepythonserver as nsp
 import time
@@ -20,25 +20,26 @@ pd.set_option('mode.chained_assignment', None)
 current_date = time.strftime("%Y-%m-%d")
 
 class Misc:
-    def __init__(self):
-        self.nfo_file =  'Dependencies/' + 'NFO_' + str(current_date) + '.csv'
-        self.bfo_file =  'Dependencies/' + 'BFO_' + str(current_date) + '.csv'
-        self.nse_file =  'Dependencies/' + 'NSE_' + str(current_date) + '.csv'
-        self.bse_file =  'Dependencies/' +'BSE_' + str(current_date) + '.csv'
+    def __init__(self, BASE_DIR):
+        self.BASE_DIR = BASE_DIR
+        self.nfo_file =  BASE_DIR + '/Dependencies/' + 'NFO_' + str(current_date) + '.csv'
+        self.bfo_file =  BASE_DIR + '/Dependencies/' + 'BFO_' + str(current_date) + '.csv'
+        self.nse_file =  BASE_DIR + '/Dependencies/' + str(current_date) + '.csv'
+        self.bse_file =  BASE_DIR + '/Dependencies/' + str(current_date) + '.csv'
 
         self.fileList  = [{"link":"https://api.shoonya.com/NFO_symbols.txt.zip", "name": "NFO_symbols.txt", "newName":self.nfo_file},
                           {"link":"https://api.shoonya.com/BFO_symbols.txt.zip", "name": "BFO_symbols.txt", "newName": self.bfo_file},
                           {"link":"https://api.shoonya.com/NSE_symbols.txt.zip", "name": "NSE_symbols.txt", "newName":self.nse_file},
                           {"link":"https://api.shoonya.com/BSE_symbols.txt.zip", "name": "BSE_symbols.txt", "newName":self.bse_file}]
         self.get_instrument_files()
-        self.getFutDf()
+        # self.getFutDf()  #TODO: error on start of a new month, file not there
 
     def getFutDf(self):
         nifty_monthly_expiry = self.get_nse_monthly_expiry("NIFTY", 0)
         month = nifty_monthly_expiry.strftime("%m")
         year = nifty_monthly_expiry.strftime("%Y")
         df = pd.read_csv(
-            f"data/candleStickData/NIFTY/futureData/{year}/{month}/3m/NIFTY_F1.csv")
+            f"{self.BASE_DIR}/data/candleStickData/NIFTY/futureData/{year}/{month}/3m/NIFTY_F1.csv")
         df['time'] = pd.to_datetime(df['time'], format='%Y-%m-%d %H:%M:%S')
         self.fut_df = df
 
@@ -47,15 +48,15 @@ class Misc:
         global instrument_df
         current_date = time.strftime("%Y-%m-%d")
         expected_file = 'NFO_ ' + str(current_date) + '.csv'
-        for item in os.listdir("Dependencies"):
+        for item in os.listdir(f"{self.BASE_DIR}/Dependencies"):
             path = os.path.join(item)
 
             if item.endswith(".txt"):
-                os.remove("Dependencies/" + path)
+                os.remove(f"{self.BASE_DIR}/Dependencies/" + path)
 
             elif (item.startswith('NFO_') or item.startswith('BFO_') or item.startswith('BSE_') or item.startswith('NSE_')) and (current_date not in item):
-                if os.path.isfile("Dependencies/" + path):
-                    os.remove("Dependencies/" + path)
+                if os.path.isfile(f"{self.BASE_DIR}/Dependencies/" + path):
+                    os.remove(f"{self.BASE_DIR}/Dependencies/" + path)
 
         for expected_file in self.fileList:
             link, name, newName = expected_file['link'], expected_file['name'], expected_file['newName']
@@ -78,9 +79,9 @@ class Misc:
         if response.status_code == 200:
             # Extract the zip file contents
             with zipfile.ZipFile(io.BytesIO(response.content)) as z:
-                z.extractall('Dependencies/')
+                z.extractall(f"{self.BASE_DIR}/Dependencies/")
             print("Zip file extracted successfully.")
-            os.rename('Dependencies/' + filename,  newname)
+            os.rename(f"{self.BASE_DIR}/Dependencies/" + filename,  newname)
         else:
             print("Failed to download the zip file.")
 
@@ -383,7 +384,13 @@ class Misc:
         data = {"content": title + '\n' + body}
         r = requests.post(webhook_url, json=data, headers=headers)
 
-misc = Misc()
+    def closeContainer(self):
+        client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+        container_id = socket.gethostname()
+        container = client.containers.get(container_id)
+        container.stop()
+
+# misc = Misc()
 
 # if __name__ == "__main__":
 #     parser = argparse.ArgumentParser()

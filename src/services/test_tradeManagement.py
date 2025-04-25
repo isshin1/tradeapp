@@ -234,7 +234,7 @@ def manageTrade(ltp, token, pt, trade, current_time):
                 logger.info(f"{trade.name} entry price {trade.entryPrice} exit price {trade.slPrice}")
                 logger.info(f"{trade.name} trade trailing ends with points {round(trade.slPrice - trade.entryPrice, 1)}")
             else:
-                logger.info(f"{trade.name} sl of {trade.entryPrice - trade.slPrice} points reached at time {current_time.strftime()}")
+                logger.info(f"{trade.name} sl of {trade.entryPrice - trade.slPrice} points reached at time {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
             trade.status = 2
     except Exception as e:
         logger.error(f"error in managing trade at time {current_time} {e}")
@@ -647,13 +647,13 @@ def run_feed( time, expiry, tsym , dps = [] ):
         target1, target2 = 25, 0
         token = post_entry_df.iloc[0]['token']
         trade1 = PartialTrade(
-            name="trade1", status=0, qty=150, entryPrice=entryPrice, slPrice=entryPrice-5, maxSlPrice=entryPrice-7,
+            name="trade1", status=0, qty=150, entryPrice=entryPrice, slPrice=entryPrice-10, maxSlPrice=entryPrice-7,
             targetPoints= target1, orderType="STOP_LOSS", prd='INTRADAY', exch="NSE_NFO", tsym=tsym,
             diff=0.2, token=token, optionType=optionType, startTime=time
         )
 
         trade2 = PartialTrade(
-            name='trade2', status=0, qty=75, entryPrice=entryPrice, slPrice=entryPrice-5, maxSlPrice=entryPrice-7,
+            name='trade2', status=0, qty=75, entryPrice=entryPrice, slPrice=entryPrice-10, maxSlPrice=entryPrice-7,
             targetPoints=target2, orderType="STOP_LOSS", prd='INTRADAY', exch="NSE_NFO", tsym=tsym,
             diff=0.2, token=token, optionType=optionType, startTime=time
         )

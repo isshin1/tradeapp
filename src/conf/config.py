@@ -5,7 +5,7 @@ from Dependencies.Dhan_Tradehull.Dhan_Tradehull import Tradehull
 from utils.shoonyaApiHelper import ShoonyaApiPy
 import pyotp
 import logging
-from utils.misc import misc
+from utils.misc import Misc
 import glob, os, sys
 
 
@@ -13,11 +13,14 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.append(BASE_DIR)
 print(sys.path)
+
+misc = Misc(BASE_DIR)
 # This points to src/
 # CONFIG_PATH = os.path.join(BASE_DIR, 'config.yaml')
 
 with open(BASE_DIR+'/conf/config.yaml', 'r') as file:
     config = yaml.safe_load(file)
+
 
 client_id = config['dhan']['client_id']
 access_token = config['dhan']['access_token']
@@ -50,6 +53,8 @@ try:
 
     nifty_fut_symbol = "NIFTY" + datetime.strftime(nifty_monthly_expiry, "%d%b%y").upper() + "F"
     nifty_fut_token = misc.getToken(nifty_fut_symbol)
+    target1, target2 = config['intraday']['indexes'][0]['targets']
+    logger.info(f"default targets are {target1} and {target2}")
 
 except Exception as err :
     print(f"encountered error on logging in {err}")

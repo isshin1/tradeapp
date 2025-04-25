@@ -52,9 +52,9 @@ class DecisionPoints:
         check if price is close to an untraded decision point or not
         '''
         for decisionPoint in self.decisionPoints:
-            if type == 'CALL' and decisionPoint.call and  abs(price - decisionPoint.price) < 15:
+            if type == 'CALL' and decisionPoint.call and  abs(price - decisionPoint.price) < 25:
                 return True
-            if type == 'PUT' and decisionPoint.put and  abs(decisionPoint.price - price)  < 15:
+            if type == 'PUT' and decisionPoint.put and  abs(decisionPoint.price - price)  < 25:
                 return True
         return False
 

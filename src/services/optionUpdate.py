@@ -1,6 +1,5 @@
-from conf.config import config, dhan_api, shoonya_api, logger
+from conf.config import config, dhan_api, shoonya_api, logger, misc
 from models.TradeManager import tradeManager
-from utils.misc import misc
 import math, mibian
 from datetime import datetime
 from conf import websocketService
