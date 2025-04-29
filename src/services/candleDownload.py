@@ -168,33 +168,38 @@ def download_monthly_indices(symbol, exch, token):
 def download_monthly_futures(symbol, exch):
     current_expiry = misc.get_monthly_expiry(symbol, exch)
     # TODO: get previous expiries from db
-    previous_expiry = current_expiry - timedelta(days=30)
+    previous_expiry = current_expiry - timedelta(days=40) # need a way to log previous expiries
     fut_symbol = symbol + current_expiry.strftime('%d%b%y').upper() + "F"
 
     df = pd.read_csv(misc.nfo_file)
     row = df[df.TradingSymbol == fut_symbol].iloc[0]
     exch = row.Exchange
     token = str(row.Token)
-
-    for interval in range(1, 7, 2):
-        ret = shoonya_api.get_time_price_series(exchange=exch, token=token, starttime=previous_expiry.timestamp(),
-                                        interval=interval)
-        ret.reverse()
-        out_file = out_folder + '/' + symbol + '/futureData/' + current_expiry.strftime('%Y/%m/') + str(
-            interval) + 'm/' + symbol + '_F1.csv'
-        dump_to_csv(ret, out_file)
-
-    # if expiry day, download next month data as well
-    if current_expiry == datetime.now().date():
-        previous_expiry = current_expiry
-        current_expiry = misc.get_monthly_expiry(symbol, exch, month=1)
+    try:
         for interval in range(1, 7, 2):
             ret = shoonya_api.get_time_price_series(exchange=exch, token=token, starttime=previous_expiry.timestamp(),
-                                                    interval=interval)
+                                            interval=interval)
+            if ret == None:
+                logger.error(f"fut data for {interval}m is empty")
+                continue
             ret.reverse()
             out_file = out_folder + '/' + symbol + '/futureData/' + current_expiry.strftime('%Y/%m/') + str(
                 interval) + 'm/' + symbol + '_F1.csv'
             dump_to_csv(ret, out_file)
+
+        # if expiry day, download next month data as well
+        if current_expiry == datetime.now().date():
+            previous_expiry = current_expiry
+            current_expiry = misc.get_monthly_expiry(symbol, exch, month=1)
+            for interval in range(1, 7, 2):
+                ret = shoonya_api.get_time_price_series(exchange=exch, token=token, starttime=previous_expiry.timestamp(),
+                                                        interval=interval)
+                ret.reverse()
+                out_file = out_folder + '/' + symbol + '/futureData/' + current_expiry.strftime('%Y/%m/') + str(
+                    interval) + 'm/' + symbol + '_F1.csv'
+                dump_to_csv(ret, out_file)
+    except Exception as e:
+        logger.error(f"Exception in downloading fut data: {e}")
 
 # %%
 def parse_indexes():
@@ -234,8 +239,9 @@ def downloadCheck(force=False):
         logger.info("Downloading candlestick data now")
         parse_indexes()
         getOrderBook()
-        logger.info("stopping container now")
-        misc.closeContainer()
+        if os.path.exists('/.dockerenv'):
+            logger.info("stopping container now")
+            misc.closeContainer()
 
 
     else:
@@ -243,6 +249,8 @@ def downloadCheck(force=False):
 
 
 def download_candlestick_data():
+    # download_monthly_futures('NIFTY', 'NFO')
+
     if datetime.now().weekday() >= 5:
         logger.info("weekday, skipping candle download")
         return

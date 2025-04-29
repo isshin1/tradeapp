@@ -2,7 +2,7 @@ from fastapi import APIRouter, BackgroundTasks
 from conf.config import dhan_api, logger
 from services.riskManagement import riskManagementobj
 from services.tradeManagement import on_order_update, updateOpenOrders, manageOptionSl, updateTargets
-from services.test_tradeManagement import  run_feed
+from services.test_tradeManagement import  run_feed, run
 
 from pydantic import BaseModel
 from conf import websocketService
@@ -156,6 +156,22 @@ async def tradeCheck( background_tasks: BackgroundTasks, trade: TradeRequest ):
 
     return {"message": "Trade started, not waiting for completion"}
     # run()
+
+@router.post("/api/tradeCheckOld")
+async def tradeCheck( background_tasks: BackgroundTasks, trade: TradeRequest ):
+    trade.to_datetime()
+    # token = trade.token
+
+    time = trade.time
+    expiry = trade.expiry
+    dps = trade.dps
+
+    # tsym = 'NIFTY ' +  expiry.strftime('%d %b ').upper() + str(strike_price) +  ' ' +optionType
+    tsym = trade.tsym
+    run(time, expiry, tsym, dps)
+    # background_tasks.add_task(run,  time, expiry , tsym, dps)
+
+    return {"message": "Trade started, not waiting for completion"}
 
 # @router.get("/api/tradeCheck")
 # async def tradeCheck( background_tasks: BackgroundTasks, trade: TradeRequest ):

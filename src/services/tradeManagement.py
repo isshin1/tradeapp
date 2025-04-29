@@ -78,44 +78,73 @@ def manageTrade(ltp, trade):
                 #                                  quantity=trade.qty, price=trade.targetPrice, trigger_price=0, disclosed_quantity=0, validity='DAY')
 
                 dhan_api.cancel_order(OrderID=trade.orderNumber)
-                time.sleep(1) # to make sure order is cancelled and new order doesnt have margin issues
+                # time.sleep(1)  to make sure order is cancelled and new order doesnt have margin issues
 
-                try:
-                    res = dhan_api.Dhan.place_order(security_id=trade.token, exchange_segment="NSE_FNO", transaction_type="SELL",
-                                                    quantity=trade.qty, order_type="LIMIT", product_type=trade.prd,
-                                                    price=trade.targetPoints + trade.entryPrice , trigger_price=0)
-                    logger.info(f"modified placed {trade.name} limit order")
-                    logger.info(res)
-                except Exception as e:
-                    logger.error("failed to place limit convert order {}".format(e))
-                else:
-                    trade.orderNumber = res['data']['orderId']
 
-                trade.orderType = "LMT"
+                tries = 3
+                while tries > 0:
+                    try:
+                        res = dhan_api.Dhan.place_order(security_id=trade.token, exchange_segment="NSE_FNO", transaction_type="SELL",
+                                                        quantity=trade.qty, order_type="LIMIT", product_type=trade.prd,
+                                                        price=trade.targetPoints + trade.entryPrice , trigger_price=0)
+                        if res['status'] != 'success':
+                            logger.info(f"error in placing new limit order after cancelling sl order with try {4 - tries } , {res['remarks']}")
+                            time.sleep(1)
+                            tries -= 1
+                            continue
+                        else:
+                            logger.info(f"modified placed {trade.name} limit order")
+                            logger.info(res)
+                            trade.orderNumber = res['data']['orderId']
+                            trade.orderType = "LMT"
+                            logger.info(
+                                f"{trade.name} sl order modified from STOP_LOSS to LMT with target "
+                                f"{trade.entryPrice + trade.targetPoints}"
+                            )
+                            break
+                    except Exception as e:
+                        logger.error("failed to place limit convert order {}".format(e))
+                # else:
+                #     trade.orderNumber = res['data']['orderId']
+
+
+                # trade.orderType = "LMT"
                 # trade.orderNumber = res['data']['orderId']
-                logger.info(f"{trade.name} sl order modified from STOP_LOSS to LMT with target {trade.entryPrice + trade.targetPoints}")
+                # logger.info(f"{trade.name} sl order modified from STOP_LOSS to LMT with target {trade.entryPrice + trade.targetPoints}")
             if points <= 1.0 / 3 * targetPoints and trade.orderType == "LMT":
                 logger.info("modifying target order from LIMIT to STOP_LOSS")
                 # ret = dhan_api.Dhan.modify_order(order_id=trade.orderNumber, order_type="STOP_LOSS", leg_name="ENTRY_LEG",
                 #                                  quantity=trade.qty, price=trade.slPrice, trigger_price=trade.slPrice + trade.diff, disclosed_quantity=0, validity='DAY')
 
                 dhan_api.cancel_order(OrderID=trade.orderNumber)
-                time.sleep(1)
-
-                res = dhan_api.Dhan.place_order(security_id=trade.token, exchange_segment="NSE_FNO", transaction_type="SELL",
-                                                quantity=trade.qty, order_type="STOP_LOSS", product_type=trade.prd,
-                                                price=trade.slPrice, trigger_price=trade.slPrice + trade.diff)
-
-                trade.orderType = "STOP_LOSS"
-                trade.orderNumber = res['data']['orderId']
-                logger.info(f"{trade.name} limit order modified from LIMIT to STOP_LOSS with sl {trade.slPrice}")
-                logger.info(res)
+                # time.sleep(1)
+                tries = 3
+                while tries > 0:
+                    try:
+                        res = dhan_api.Dhan.place_order(security_id=trade.token, exchange_segment="NSE_FNO", transaction_type="SELL",
+                                                        quantity=trade.qty, order_type="STOP_LOSS", product_type=trade.prd,
+                                                        price=trade.slPrice, trigger_price=trade.slPrice + trade.diff)
+                        if res['status'] != 'success':
+                            logger.info(f"error in placing new sl order after cancelling limit order with try {4 - tries }, {res['remarks']}")
+                            time.sleep(1)
+                            tries -= 1
+                            continue
+                        else:
+                            logger.info(f"modified placed {trade.name} sl order")
+                            logger.info(res)
+                            trade.orderNumber = res['data']['orderId']
+                            trade.orderType = "STOP_LOSS"
+                            logger.info(f"{trade.name} limit order modified from "
+                                        f"LIMIT to STOP_LOSS with sl {trade.slPrice}")
+                            break
+                    except Exception as e:
+                        logger.error("failed to place sl convert order {}".format(e))
         except Exception as e:
-            logger.error(f"error in modiftying order with fix target at time {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
+            logger.error(f"error in modifying order with fix target at time {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
             logger.error(e)
 
     if trade.targetPoints == 0:
-
+        current_trailing_sl = trade.slPrice
         try:
             ## (A) keeping sl 3 points below latest swing point
             if current_time.second == 0: # TODO: keep calculation at last second only ?
@@ -163,6 +192,21 @@ def manageTrade(ltp, trade):
         except Exception as e:
             logger.error(f"error in getting price below dp at time {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
             logger.error(e)
+
+        #actually modifying sl if its not same as previous sl
+        if current_trailing_sl != trade.slPrice:
+            logger.info(f"modifying trailing sl from {current_trailing_sl} to {trade.slPrice} at time {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            res=dhan_api.Dhan.modify_order(
+                order_id = trade.orderNumber,
+                order_type = "STOP_LOSS",
+                leg_name = "ENTRY_LEG",
+                quantity = trade.qty,
+                price = trade.slPrice,
+                trigger_price = trade.slPrice + 0.5,
+                disclosed_quantity = 0,
+                validity = 'DAY'
+                )
+            logger.info(res)
 
     if ltp < trade.maxSlPrice:
         logger.info("limit sl order crossed, exiting all trades with market orders")
@@ -381,6 +425,15 @@ def handle_sell_order(token, order_update):
                     tradeManager.updatePartialTrade(partialTrade)
                     logger.info(f"{pt} completed {partialTrade.__str__()}")
 
+                    if pt == 'trade1': # if trade1 is completed, modify trade2 sl to 0
+                        partialTrade2 = trades['trade2']
+                        slPrice = partialTrade2.slPrice
+                        if partialTrade2.slPrice < partialTrade.entryPrice:
+                            partialTrade2.slPrice = partialTrade.entryPrice
+                            tradeManager.updatePartialTrade(partialTrade2)
+                            logger.info(f"changed sl of trade2 from {slPrice} to cost at {partialTrade.entryPrice} ")
+
+
             flag = True
             for partialTrade in trades.values():
                 if partialTrade.status != 2:
@@ -457,9 +510,9 @@ def updateTargets(targets):
             if trade.name == "trade1":
                     trade.targetPoints = targets.get("t1")
                     logger.info(f"{trade.name} target changed to {trade.targetPoints}")
-            if trade.name == "trade2":
-                trade.targetPoints = targets.get("t2")
-                logger.info(f"{trade.name} target changed to {trade.targetPoints}")
+            # if trade.name == "trade2":
+            #     trade.targetPoints = targets.get("t2")
+            #     logger.info(f"{trade.name} target changed to {trade.targetPoints}")
 
             # if trade.name == "t3":
             #     trade.set_target_price(targets.get("t3") + entry_price)

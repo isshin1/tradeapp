@@ -37,7 +37,9 @@ class Tradehull:
 
 		# Create a file handler
 		date_str = str(datetime.datetime.now().today().date())
-		file = BASE_DIR + '/data/logs/' + date_str + '.log'
+		log_folder = BASE_DIR + '/data/logs/' + date_str.split('-')[0] + '/' + date_str.split('-')[1] + '/'
+		os.makedirs(log_folder, exist_ok=True)
+		file = log_folder + date_str + '.log'
 		file_handler = logging.FileHandler(file, mode='a')
 		file_handler.setLevel(log_level)
 

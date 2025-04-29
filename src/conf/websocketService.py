@@ -32,7 +32,7 @@ def send_message(message):
         queue.put(message)
         asyncio.run(process_queue())
     except Exception as e:
-        logger.error(f"Failed to queue message: {e}")
+        logger.error(f"Failed to queue message: {message} {e}")
 
 async def process_queue():
     while not queue.empty():

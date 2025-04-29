@@ -1,6 +1,6 @@
 from logging import raiseExceptions
 
-from conf.config import dhan_api, shoonya_api, logger, nifty_fut_token
+from conf.config import dhan_api, shoonya_api, logger, order_folder
 from services.riskManagement import riskManagementobj
 from conf import websocketService
 from models.DecisionPoints import decisionPoints
@@ -138,7 +138,7 @@ def getOrderBook():
     try:
         validOrders = orders[orders["orderStatus"] == "TRADED"].reset_index(drop=True)
         validOrders = validOrders[['orderId', 'transactionType', 'orderType', 'tradingSymbol', 'exchangeTime', 'filledQty', 'averageTradedPrice']]
-        orderFile = 'data/orderData/'+ str(datetime.now().date()) + '.csv'
+        orderFile = order_folder + str(datetime.now().date()) + '.csv'
         validOrders.to_csv(orderFile, index=True)
     except Exception as e:
         logger.error(f"error in downloading orderData {e}")

@@ -38,11 +38,6 @@ async def update_targets(target_data: TargetRequest):
 @router.post("/api/buyOrder/{token}/{priceType}/{price}/{bof}")
 async def buy_order(token: str, priceType: str, price: float, bof: bool):
     try:
-        #TODO: comment it out
-        # if token not in tradeManager.ltps:
-        #     tradeManager.ltps[token] = 22400
-
-
         buyOrder(token, priceType, price, bof)
         # You can process 'res' if needed; here we simply return a success message.
         return {"message": "order placed"}

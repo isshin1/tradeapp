@@ -1,12 +1,13 @@
 import os
 from datetime import datetime
-from conf.config import logger,  shoonya_api, nifty_fut_token, dhan_api
+from conf.config import logger,  shoonya_api, nifty_fut_token, dhan_api, feed_folder
 from services.tradeManagement import manageOptionSl, setLtps
 import threading
 from services.optionUpdate import optionUpdateObj
 import time
 import concurrent.futures
 from conf.websocketService import send_price_feed
+from models.candlestickData import candlestickData
 import csv
 
 # from services.charts import chart
@@ -17,7 +18,10 @@ feedJson={}
 ltps=dict()
 current_chart_token = 0
 
-feed_file = "data/feed/" + str(datetime.now().date()) + ".csv"
+# date_str = str(datetime.datetime.now().today().date())
+# feed_folder = BASE_DIR + '/data/feed/' + date_str.split('-')[0] + '/' + date_str.split('-')[1] + '/'
+# os.makedirs(feed_folder, exist_ok=True)
+feed_file = feed_folder + str(datetime.now().date()) + ".csv"
 
 # marketAnalysis.run()
 
@@ -74,7 +78,6 @@ def event_handler_feed_update(tick_data):
                 feedJson[token] = {}
             feedJson[token].update(feed_data)
         # logger.info(f"{token} {feed_data}")
-        ## TODO: paste a sample feedjson here
         # {'Tsym': 'Nifty 50', 'ltp': 23463.95, 'tt': '2025-03-22T10:35:52', 'ft': 1742621464}
         # {'Tsym': 'NIFTY27MAR25F', 'Volume': '51225', 'ltp': 24100.0, 'openi': 14353050.0, 'pdopeni': '14353050', 'tt': '2025-03-22T10:35:48', 'ft': 1742621464}
         if UPDATE:
@@ -90,7 +93,7 @@ def event_handler_feed_update(tick_data):
                             futures.append(executor.submit(manageOptionSl, token, float(feedJson[token]['ltp']))) # send ltp to trade manager
                             futures.append(executor.submit(send_price_feed, token, epoch, float(feedJson[token]['ltp']))) # send ltp to frontend
                             futures.append(executor.submit(setLtps, ltps)) # update ltps globally TODO: fetch from candlestick data instaed ?
-                            # futures.append(executor.submit(candlestickData.updateTickData, token, feed_data)) # update candlestick data TODO: update it later on
+                            futures.append(executor.submit(candlestickData.updateTickData, token, feed_data)) # update candlestick data TODO: update it later on, what does it mean ?
                             for future in futures:
                                 try:
                                     future.result()

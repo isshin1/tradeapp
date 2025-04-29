@@ -227,6 +227,7 @@ def manageTrade(ltp, token, pt, trade, current_time):
                             trade.slPrice = new_sl
             except Exception as e:
                 logger.error(f"error in getting price below dp at time {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
+                logger.error(e)
 
 
         if ltp <= trade.slPrice:
@@ -545,78 +546,80 @@ def updateTargets(targets: Dict[str, float]):
     return 0
 
 
-# def run( time, expiry, tsym , dps = [] ):
-#
-#     try:
-#
-#         # tsym = "NIFTY 27 MAR 23650 CALL"
-#         optionType = tsym.split(' ')[-1]
-#
-#         decisionPoints.decisionPoints = []
-#         # add decision points
-#         month = expiry.strftime('%m').zfill(2)
-#         day = expiry.strftime('%d').zfill(2)
-#
-#         for dp in dps:
-#             decisionPoints.addDecisionPoint(name=str(dp),price= dp )
-#
-#
-#         fut_token_df = pd.read_csv(f"/home/kushy/PycharmProjects/TradeApp/candleStickData/NIFTY/futureData/2025/{month}/3m/NIFTY_F1.csv")
-#         fut_token_df['time'] = pd.to_datetime(fut_token_df['time'], format='%Y-%m-%d %H:%M:%S')
-#
-#
-#         option = 'NIFTY' + expiry.strftime('%d').zfill(2) + expiry.strftime('%b%y').upper() + tsym.split(' ')[-1][0] + tsym.split(' ')[3]
-#         token_df = pd.read_csv(f"/home/kushy/PycharmProjects/TradeApp/candleStickData/NIFTY/optionData/2025/{month}/{day}/3m/{option}.csv")
-#         token_df['time'] = pd.to_datetime(token_df['time'], format='%Y-%m-%d %H:%M:%S')
-#
-#         df = token_df[(token_df.time >= time) & (token_df.time.dt.date == time.date())]
-#         fut_df = fut_token_df[ (fut_token_df.time >= time) & (fut_token_df.time.dt.date == time.date())]
-#
-#
-#         entryPrice = df.iloc[0]['close']
-#         target1, target2 = 25, 0
-#         token = "48695"
-#
-#         trade1 = PartialTrade(
-#             name="trade1", status=0, qty=150, entryPrice=entryPrice, slPrice=entryPrice-5, maxSlPrice=entryPrice-7,
-#             targetPoints= target1, orderType="STOP_LOSS", prd='INTRADAY', exch="NSE_NFO", tsym=tsym,
-#             diff=0.2, token=token, optionType=optionType, startTime=time
-#         )
-#
-#         trade2 = PartialTrade(
-#             name='trade2', status=0, qty=75, entryPrice=entryPrice, slPrice=entryPrice-5, maxSlPrice=entryPrice-7,
-#             targetPoints=target2, orderType="STOP_LOSS", prd='INTRADAY', exch="NSE_NFO", tsym=tsym,
-#             diff=0.2, token=token, optionType=optionType, startTime=time
-#         )
-#
-#         tradeManager.addTrade(token, trade1)
-#         tradeManager.addTrade(token, trade2)
-#
-#
-#         logger.info(f"starting trade with entry price {entryPrice}")
-#
-#
-#         for idx, close_price in enumerate(df['close']):
-#             current_option_df = df.iloc[:idx + 1].copy()
-#             candlestickData.candlestickData[token] = current_option_df
-#             current_time = current_option_df.iloc[-1]['time']
-#             candlestickData.candlestickData[nifty_fut_token] = fut_df[fut_df['time'] <= current_time].copy()
-#             if current_time == datetime(2025, 3, 28, 9, 36):
-#                 pass
-#             manageOptionSl(token, float(close_price), current_time)
-#
-#         trades = tradeManager.getTrades(token)
-#         trade2 = trades.get('trade2')
-#
-#
-#         if trade2.status != 2:
-#             # print("trade is not finished")
-#             # print(f"last price is {df.iloc[-1]['close']}")
-#             logger.info(f"points are {df.iloc[-1]['close'] - entryPrice }")
-#
-#             # time.sleep(0.1)
-#     except Exception as e:
-#         logger.error(e)
+def run( time, expiry, tsym , dps = [] ):
+
+    try:
+
+        # tsym = "NIFTY 27 MAR 23650 CALL"
+        optionType = tsym.split(' ')[-1]
+
+        decisionPoints.decisionPoints = []
+        # add decision points
+        month = expiry.strftime('%m').zfill(2)
+        day = expiry.strftime('%d').zfill(2)
+
+        candlestickData.reset()
+        decisionPoints.decisionPoints = []
+        for dp in dps:
+            decisionPoints.addDecisionPoint(name=str(dp),price= dp )
+
+
+        fut_token_df = pd.read_csv(f"/home/kushy/PycharmProjects/TradeApp/data/candleStickData/NIFTY/futureData/2025/{month}/3m/NIFTY_F1.csv")
+        fut_token_df['time'] = pd.to_datetime(fut_token_df['time'], format='%Y-%m-%d %H:%M:%S')
+
+
+        option = 'NIFTY' + expiry.strftime('%d').zfill(2) + expiry.strftime('%b%y').upper() + tsym.split(' ')[-1][0] + tsym.split(' ')[3]
+        token_df = pd.read_csv(f"/home/kushy/PycharmProjects/TradeApp/data/candleStickData/NIFTY/optionData/2025/{month}/{day}/3m/{option}.csv")
+        token_df['time'] = pd.to_datetime(token_df['time'], format='%Y-%m-%d %H:%M:%S')
+
+        df = token_df[(token_df.time >= time) & (token_df.time.dt.date == time.date())]
+        fut_df = fut_token_df[ (fut_token_df.time >= time) & (fut_token_df.time.dt.date == time.date())]
+
+
+        entryPrice = df.iloc[0]['close']
+        target1, target2 = 25, 0
+        token = "48695"
+
+        trade1 = PartialTrade(
+            name="trade1", status=0, qty=150, entryPrice=entryPrice, slPrice=entryPrice-5, maxSlPrice=entryPrice-7,
+            targetPoints= target1, orderType="STOP_LOSS", prd='INTRADAY', exch="NSE_NFO", tsym=tsym,
+            diff=0.2, token=token, optionType=optionType, startTime=time
+        )
+
+        trade2 = PartialTrade(
+            name='trade2', status=0, qty=75, entryPrice=entryPrice, slPrice=entryPrice-5, maxSlPrice=entryPrice-7,
+            targetPoints=target2, orderType="STOP_LOSS", prd='INTRADAY', exch="NSE_NFO", tsym=tsym,
+            diff=0.2, token=token, optionType=optionType, startTime=time
+        )
+
+        tradeManager.addTrade(token, trade1)
+        tradeManager.addTrade(token, trade2)
+
+
+        logger.info(f"starting trade with entry price {entryPrice}")
+
+
+        for idx, close_price in enumerate(df['close']):
+            current_option_df = df.iloc[:idx + 1].copy()
+            candlestickData.candlestickData[int(token)] = current_option_df.to_dict()
+            current_time = current_option_df.iloc[-1]['time']
+            candlestickData.candlestickData[int(nifty_fut_token)] = fut_df[fut_df['time'] <= current_time].to_dict()
+            if current_time == datetime(2025, 3, 28, 9, 36):
+                pass
+            manageOptionSl(token, float(close_price), current_time)
+
+        trades = tradeManager.getTrades(token)
+        trade2 = trades.get('trade2')
+
+
+        if trade2.status != 2:
+            # print("trade is not finished")
+            # print(f"last price is {df.iloc[-1]['close']}")
+            logger.info(f"points are {df.iloc[-1]['close'] - entryPrice }")
+
+            # time.sleep(0.1)
+    except Exception as e:
+        logger.error(e)
 
 
 
