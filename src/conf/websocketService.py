@@ -30,12 +30,11 @@ queue = Queue()
 def send_message(message):
     try:
         queue.put(message)
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            asyncio.ensure_future(process_queue())
-        else:
-            loop.run_until_complete(process_queue())
-        # asyncio.run(process_queue())
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(process_queue())
+        except RuntimeError:  # No active event loop
+            asyncio.run(process_queue())
     except Exception as e:
         logger.error(f"Failed to queue message: {message} {e}")
 
