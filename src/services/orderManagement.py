@@ -139,7 +139,7 @@ def getOrderBook():
         validOrders = orders[orders["orderStatus"] == "TRADED"].reset_index(drop=True)
         validOrders = validOrders[['orderId', 'transactionType', 'orderType', 'tradingSymbol', 'exchangeTime', 'filledQty', 'averageTradedPrice']]
         orderFile = order_folder + str(datetime.now().date()) + '.csv'
-        validOrders.to_csv(orderFile, index=True)
+        validOrders.to_csv(orderFile, index=False)
     except Exception as e:
         logger.error(f"error in downloading orderData {e}")
 

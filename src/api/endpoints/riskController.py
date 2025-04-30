@@ -1,5 +1,6 @@
 from fastapi import APIRouter
-from services.pihole import pihole
+from services.riskManagement import riskManagementobj
+# from services.pihole import pihole
 router = APIRouter()
 
 
@@ -21,9 +22,9 @@ async def endSession():
 # async def enablePihole():
 #     return pihole.enablePihole()
 #
-@router.get("/api/disablePihole")
-async def disablePihole():
-    return pihole.disablePihole()
+# @router.get("/api/disablePihole")
+# async def disablePihole():
+#     return pihole.disablePihole()
 #
 # @router.post("/api/blockForDuration")
 # async def disablePihole():
