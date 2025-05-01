@@ -15,6 +15,7 @@ from models.DecisionPoints import decisionPoints
 from models.TradeManager import tradeManager
 from models.candlestickData import candlestickData
 import time
+import pandas as pd
 
 ltps = ()
 
@@ -537,3 +538,44 @@ def updateTargets(targets):
     logger.info("targets modified")
     websocketService.send_toast("Targets Update request", "Targets Updated")
     return 0
+
+
+def refreshTrade():
+
+
+    for token in tradeManager.trades:
+        tradeManager.removeTrade(token)
+
+    trades = tradeManager.getTrades()
+    # cancel all open orders
+    data = dhan_api.get_order_list()["data"]
+    if data is None or len(data) == 0:
+        pass
+    orders = pd.DataFrame(data)
+    if orders.empty:
+        pass
+    trigger_pending_orders = orders.loc[orders['orderStatus'] == 'PENDING']
+    open_orders = orders.loc[orders['orderStatus'] == 'TRANSIT']
+    for index, row in trigger_pending_orders.iterrows():
+        response = dhan_api.Dhan.cancel_order(row['orderId'])
+    for index, row in open_orders.iterrows():
+        response = dhan_api.Dhan.cancel_order(row['orderId'])
+
+    position_dict = dhan_api.get_positions()["data"]
+    positions_df = pd.DataFrame(position_dict)
+    if positions_df.empty:
+        return
+    positions_df['netQty'] = positions_df['netQty'].astype(int)
+    bought = positions_df.loc[positions_df['netQty'] > 0]
+
+
+    for index, row in bought.iterrows():
+        qty = int(row["netQty"])
+        tsym = row["tradingSymbol"]
+        token = row["securityId"]
+        entryPrice = float(row["costPrice"]) # TODO: is this correct field ?
+        prd = "INTRADAY"
+        order_update = {'quantity':qty, 'tradedPrice':entryPrice, 'displayName':tsym, 'product':  prd}
+        createTrade(token, order_update)
+        break
+

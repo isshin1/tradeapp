@@ -146,22 +146,30 @@ def parse_weekly_options(symbol, exch, token):
     lc = int(minima / 50) * 50 - 100
 
     expiries_list = get_expiries_list(symbol, exch, uc, lc, current_expiry)
-    # print(expiries_list)
     download_weekly_options(symbol, expiries_list, prev_expiry , current_expiry)
 
+    curr_date = (pd.Timestamp.today() - timedelta(days=1)).date()
+    expiry_date = current_expiry.date()
+    if expiry_date == curr_date:
+        prev_expiry = current_expiry
+        current_expiry =  misc.get_weekly_expiry(symbol, exch, download=False)
+        expiries_list = get_expiries_list(symbol, exch, uc, lc, current_expiry)
+        download_weekly_options(symbol, expiries_list, prev_expiry, current_expiry)
 
 # %%
 def download_monthly_indices(symbol, exch, token):
     current_date = datetime.now()
     start_of_month = datetime(current_date.year, current_date.month, 1)
-
-    for interval in range(1, 7, 2):
-        ret = shoonya_api.get_time_price_series(exchange=exch, token=token, starttime=start_of_month.timestamp(),
-                                        interval=interval)
-        ret.reverse()
-        out_file = out_folder + '/' + symbol + '/indexData/' + datetime.now().strftime('%Y/%m/') + str(
-            interval) + 'm/' + symbol + '.csv'
-        dump_to_csv(ret, out_file)
+    try:
+        for interval in range(1, 7, 2):
+            ret = shoonya_api.get_time_price_series(exchange=exch, token=token, starttime=start_of_month.timestamp(),
+                                            interval=interval)
+            ret.reverse()
+            out_file = out_folder + '/' + symbol + '/indexData/' + datetime.now().strftime('%Y/%m/') + str(
+                interval) + 'm/' + symbol + '.csv'
+            dump_to_csv(ret, out_file)
+    except Exception as e:
+        logger.error(f"error in downloading index data {e}")
 
 
 # %%
@@ -247,7 +255,7 @@ def downloadCheck(force=False):
     else:
         logger.info("candle data already exists. skipping download")
 
-
+# downloadCheck(force=True)
 def download_candlestick_data():
     # download_monthly_futures('NIFTY', 'NFO')
 
