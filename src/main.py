@@ -6,7 +6,7 @@ from conf.dhanWebsocket import start_dhan_websocket
 from conf.shoonyaWebsocket import start_shoonya_websocket
 from conf.config import logger
 
-from api.endpoints import riskController , testController, orderController, pollingController
+from api.endpoints import riskController , testController, orderController, pollingController, tradeController
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -22,6 +22,7 @@ app.include_router(testController.router)
 app.include_router(orderController.router)
 app.include_router(pollingController.router)
 
+app.include_router(tradeController.router)
 
 app.add_middleware(
     CORSMiddleware,
