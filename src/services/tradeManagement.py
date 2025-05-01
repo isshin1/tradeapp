@@ -546,22 +546,21 @@ def refreshTrade():
     for token in tradeManager.trades:
         tradeManager.removeTrade(token)
 
-    trades = tradeManager.getTrades()
     # cancel all open orders
-    data = dhan_api.get_order_list()["data"]
+    data = dhan_api.Dhan.get_order_list()["data"]
     if data is None or len(data) == 0:
         pass
-    orders = pd.DataFrame(data)
-    if orders.empty:
-        pass
-    trigger_pending_orders = orders.loc[orders['orderStatus'] == 'PENDING']
-    open_orders = orders.loc[orders['orderStatus'] == 'TRANSIT']
-    for index, row in trigger_pending_orders.iterrows():
-        response = dhan_api.Dhan.cancel_order(row['orderId'])
-    for index, row in open_orders.iterrows():
-        response = dhan_api.Dhan.cancel_order(row['orderId'])
+    else:
+        orders = pd.DataFrame(data)
+        if not orders.empty:
+            trigger_pending_orders = orders.loc[orders['orderStatus'] == 'PENDING']
+            open_orders = orders.loc[orders['orderStatus'] == 'TRANSIT']
+            for index, row in trigger_pending_orders.iterrows():
+                response = dhan_api.Dhan.cancel_order(row['orderId'])
+            for index, row in open_orders.iterrows():
+                response = dhan_api.Dhan.cancel_order(row['orderId'])
 
-    position_dict = dhan_api.get_positions()["data"]
+    position_dict = dhan_api.Dhan.get_positions()["data"]
     positions_df = pd.DataFrame(position_dict)
     if positions_df.empty:
         return
