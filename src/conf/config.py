@@ -13,9 +13,12 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 feed_folder = BASE_DIR + '/data/feed/' + date_str.split('-')[0] + '/' + date_str.split('-')[1] + '/'
 log_folder = BASE_DIR + '/data/logs/' + date_str.split('-')[0] + '/' + date_str.split('-')[1] + '/'
 order_folder = BASE_DIR + '/data/orderData/' + date_str.split('-')[0] + '/' + date_str.split('-')[1] + '/'
+position_folder = BASE_DIR + '/data/positionData/' + date_str.split('-')[0] + '/' + date_str.split('-')[1] + '/'
+
 os.makedirs(feed_folder, exist_ok=True)
 os.makedirs(log_folder, exist_ok=True)
 os.makedirs(order_folder, exist_ok=True)
+os.makedirs(position_folder, exist_ok=True)
 
 if BASE_DIR not in sys.path:
     sys.path.append(BASE_DIR)

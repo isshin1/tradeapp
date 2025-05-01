@@ -2,7 +2,7 @@
 from datetime import datetime
 
 from conf import websocketService
-from conf.config import dhan_api, shoonya_api, logger, nifty_fut_token, config
+from conf.config import dhan_api, shoonya_api, logger, nifty_fut_token, config, position_folder
 from conf.websocketService import update_order_feed, send_toast
 from models.partialTrade import PartialTrade
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -477,6 +477,17 @@ def handle_order(order_update: dict):
     if order_update['txnType']  == 'S':
         handle_sell_order(token, order_update)
 
+def save_position():
+    try:
+        position_file = position_folder + datetime.now().strftime('%Y%m%d-%H%M%S') + '.csv'
+        position_dict = dhan_api.Dhan.get_positions()["data"]
+        positions_df = pd.DataFrame(position_dict)
+        if positions_df.empty:
+            return
+        positions_df.to_csv(position_file, index=False)
+    except Exception as e:
+        logger.error(f"error in saving positions {e}")
+
 def on_order_update(order_data: dict):
     """Optional callback function to process order data"""
     print("new order received")
@@ -485,9 +496,10 @@ def on_order_update(order_data: dict):
 
     # ignore orders other than nifty
     if order_update['displayName'].split(' ')[0] == 'NIFTY':
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
             executor.submit(handle_order, order_update)
             executor.submit(updateOpenOrders)
+            executor.submit(save_position) #TODO: remove it later, only for testing refresh button
 
 
 
