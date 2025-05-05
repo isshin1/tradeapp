@@ -100,6 +100,33 @@ def buyOrder(token, order_type, price, bof):
 
 def modifyActiveOrder(orderId, newPrice):
 
+    for token in tradeManager.trades:
+        partialTrades = tradeManager.getTrades(token)
+    trade_type = partialTrades['trade1'].orderType
+    if trade_type == "STOP_LOSS":
+        try:
+            for trade in partialTrades:
+                logger.info(f"changing SL price of {trade.name} from {trade.slPrice} to {newPrice}")
+                res = dhan_api.Dhan.modify_order(order_id=trade.orderNumber, order_type="STOP_LOSS", leg_name="ENTRY_LEG",
+                                           quantity=trade.qty,
+                                           price=newPrice, trigger_price=newPrice +  0.5,
+                                           disclosed_quantity=0, validity='DAY')
+                logger.info(res)
+        except Exception as e:
+            logger.error(f"error in modifying active SL order {e} ")
+
+    # if trade_type == "LIMIT":
+    #     try:
+    #         dhan_api.Dhan.modify_order(order_id=orderId, order_type="LIMIT", leg_name="ENTRY_LEG",quantity=order["quantity"],
+    #                                    price=newPrice, trigger_price=0, disclosed_quantity=0, validity='DAY')
+    #     except Exception as e:
+    #         logger.error("failed to modify order with error {}".format(e))
+        # else:
+        #     tradeManager['entryPrice'] = newPrice
+
+
+def modifyActiveOrderOld(orderId, newPrice):
+
     order = dhan_api.get_order_detail(orderId)
 
     if order["orderType"] == "LIMIT":

@@ -61,6 +61,35 @@ def placeSl(trade):
     tradeManager.updatePartialTrade(trade)
     # logger.info(f"placed sl for a fresh order for {trade.name} with order /number {orderNumber}")
 
+
+def cancel_order_and_confirm(order_id, max_retries=10, delay=1):
+    """
+    Cancels the order and polls until it is confirmed canceled.
+    Returns True if successfully canceled, False otherwise.
+    """
+    try:
+        logger.info(f"Cancelling stop-loss order: {order_id}")
+        res = dhan_api.cancel_order(OrderID=order_id)
+        if res.get("status") != "success":
+            logger.info("Initial cancel request failed:", res)
+            return False
+
+        # Now poll until the order is confirmed as canceled
+        for attempt in range(max_retries):
+            status = dhan_api.get_order_status(order_id)
+            if status.get("orderStatus").upper() == "CANCELLED":
+                logger.info("Order successfully cancelled.")
+                return True
+            logger.info(f"Waiting for SL order to cancel... Attempt {attempt+1} with status {status}")
+            time.sleep(delay)
+        logger.info("Failed to confirm order cancellation after retries.")
+        return False
+    except Exception as e:
+        logger.error("Exception while cancelling order:", e)
+        return False
+
+
+
 def manageTrade(ltp, trade):
     if not trade.status == 1:
         return
@@ -78,21 +107,19 @@ def manageTrade(ltp, trade):
                 # ret = dhan_api.Dhan.modify_order(order_id=trade.orderNumber, order_type="LIMIT", leg_name="ENTRY_LEG",
                 #                                  quantity=trade.qty, price=trade.targetPrice, trigger_price=0, disclosed_quantity=0, validity='DAY')
 
-                dhan_api.cancel_order(OrderID=trade.orderNumber)
-                # time.sleep(1)  to make sure order is cancelled and new order doesnt have margin issues
+                # res = dhan_api.cancel_order(OrderID=trade.orderNumber)
+                # logger.info("order cancelled with response")
+                # logger.info(f"{res}")
+                # time.sleep(1.5)  #to make sure order is cancelled and new order doesnt have margin issues
 
-
-                tries = 3
-                while tries > 0:
+                if cancel_order_and_confirm( trade.orderNumber):
                     try:
                         res = dhan_api.Dhan.place_order(security_id=trade.token, exchange_segment="NSE_FNO", transaction_type="SELL",
                                                         quantity=trade.qty, order_type="LIMIT", product_type=trade.prd,
                                                         price=trade.targetPoints + trade.entryPrice , trigger_price=0)
+                        logger.info(res)
                         if res['status'] != 'success':
-                            logger.info(f"error in placing new limit order after cancelling sl order with try {4 - tries } , {res['remarks']}")
-                            time.sleep(1)
-                            tries -= 1
-                            continue
+                            logger.info(f"error in placing new limit order after cancelling sl order  {res['remarks']}")
                         else:
                             logger.info(f"modified placed {trade.name} limit order")
                             logger.info(res)
@@ -102,9 +129,11 @@ def manageTrade(ltp, trade):
                                 f"{trade.name} sl order modified from STOP_LOSS to LMT with target "
                                 f"{trade.entryPrice + trade.targetPoints}"
                             )
-                            break
                     except Exception as e:
                         logger.error("failed to place limit convert order {}".format(e))
+                else:
+                    logger.error("Could not cancel SL order, aborting limit order placement.")
+                    return None
                 # else:
                 #     trade.orderNumber = res['data']['orderId']
 
@@ -117,19 +146,18 @@ def manageTrade(ltp, trade):
                 # ret = dhan_api.Dhan.modify_order(order_id=trade.orderNumber, order_type="STOP_LOSS", leg_name="ENTRY_LEG",
                 #                                  quantity=trade.qty, price=trade.slPrice, trigger_price=trade.slPrice + trade.diff, disclosed_quantity=0, validity='DAY')
 
-                dhan_api.cancel_order(OrderID=trade.orderNumber)
-                # time.sleep(1)
-                tries = 3
-                while tries > 0:
+                # dhan_api.cancel_order(OrderID=trade.orderNumber)
+                # logger.info("order cancelled with response")
+                # logger.info(f"{res}")
+                # time.sleep(1.5)
+
+                if cancel_order_and_confirm( trade.orderNumber):
                     try:
                         res = dhan_api.Dhan.place_order(security_id=trade.token, exchange_segment="NSE_FNO", transaction_type="SELL",
                                                         quantity=trade.qty, order_type="STOP_LOSS", product_type=trade.prd,
                                                         price=trade.slPrice, trigger_price=trade.slPrice + trade.diff)
                         if res['status'] != 'success':
-                            logger.info(f"error in placing new sl order after cancelling limit order with try {4 - tries }, {res['remarks']}")
-                            time.sleep(1)
-                            tries -= 1
-                            continue
+                            logger.info(f"error in placing new sl order after cancelling limit order {res['remarks']}")
                         else:
                             logger.info(f"modified placed {trade.name} sl order")
                             logger.info(res)
@@ -137,9 +165,12 @@ def manageTrade(ltp, trade):
                             trade.orderType = "STOP_LOSS"
                             logger.info(f"{trade.name} limit order modified from "
                                         f"LIMIT to STOP_LOSS with sl {trade.slPrice}")
-                            break
                     except Exception as e:
                         logger.error("failed to place sl convert order {}".format(e))
+                else:
+                    logger.error("Could not cancel LIMIT order, aborting SL order placement.")
+                    return None
+
         except Exception as e:
             logger.error(f"error in modifying order with fix target at time {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
             logger.error(e)
@@ -148,7 +179,7 @@ def manageTrade(ltp, trade):
         current_trailing_sl = trade.slPrice
         try:
             ## (A) keeping sl 3 points below latest swing point
-            if current_time.second == 0: # TODO: keep calculation at last second only ?
+            if current_time.second %10 == 0: # TODO: keep calculation at last second only or every 10 sec?
                 df = candlestickData.getTokenDf(trade.token)
                 new_sl_time = candlestickData.getMspLow(nifty_fut_token, trade)
 
@@ -179,7 +210,7 @@ def manageTrade(ltp, trade):
 
 
         try:
-            if current_time.second == 0:
+            if current_time.second %10 ==  0:
                 df = candlestickData.getTokenDf(trade.token)
                 fut_latest_price = candlestickData.getLatestPrice(nifty_fut_token)
                 new_sl_time, dp_price = candlestickData.getCrossedDp(fut_latest_price, nifty_fut_token, decisionPoints.decisionPoints, trade)

@@ -16,9 +16,14 @@ class CandlestickData:
     def getTokenDf(self, token):
         token = int(token)
         # df = pd.DataFrame(candlestickData[token])
-        df = pd.DataFrame.from_dict(self.candlestickData[token], orient='index')
-        df['time'] = pd.to_datetime(df['time'])
-        df.reset_index(drop=True, inplace=True)
+        try:
+            df = pd.DataFrame.from_dict(self.candlestickData[token], orient='index')
+            df['time'] = pd.to_datetime(df['time'])
+            df.reset_index(drop=True, inplace=True)
+        except Exception as e:
+            logger.error("error in getting df for token {}".format(token))
+            logger.error(e)
+            return None
         # if df.empty:
         #     return  pd.DataFrame(columns = ['time', 'open', 'low', 'high', 'close'])
         return df
@@ -36,6 +41,8 @@ class CandlestickData:
 
     def updateTickDataOld(self, token, feed_data):
         try:
+            token = int(token)
+
             if token not in self.candlestickData:
                 self.candlestickData[token] = pd.DataFrame(columns = ['time', 'open', 'low', 'high', 'close'])
             token = token
@@ -77,7 +84,7 @@ class CandlestickData:
 
     def updateTickData(self, token, feed_data):
         try:
-
+            token = int(token)
             price = float(feed_data['ltp'])
 
             tick_timestamp_epoch = feed_data['ft']
@@ -110,6 +117,7 @@ class CandlestickData:
 
     def getMspLow(self, fut_token, trade):
         try:
+            fut_token = int(fut_token)
             df = self.getTokenDf(fut_token)
             # filtered_df = df[df['time'] >= trade.startTime].reset_index(drop=True)
             filtered_df = df[df['time'] >= trade.startTime].reset_index(drop=True)
