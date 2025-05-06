@@ -1,6 +1,7 @@
 from logging import raiseExceptions
 
-from conf.config import dhan_api, shoonya_api, logger, order_folder
+from conf.config import dhan_api, shoonya_api, logger, order_folder, nifty_fut_token
+from models.partialTrade import PartialTrade
 from services.riskManagement import riskManagementobj
 from conf import websocketService
 from models.DecisionPoints import decisionPoints
@@ -47,12 +48,12 @@ def buyOrder(token, order_type, price, bof):
         # ltps[nifty_fut_token] = 22950
 
 
-        # if datetime.now() >= datetime.now().replace(hour=11, minute=0, second=0, microsecond=0):
-        #     fut_ltp = ltps[nifty_fut_token]
-        #     if not decisionPoints.checkTradeValidity(fut_ltp, optionType):
-        #         websocketService.send_toast("Wrong trade", "Price not near any DP")
-        #         logger.info(f"Wrong trade, Price not near any DP or DP already traded")
-        #         return
+        if datetime.now() >= datetime.now().replace(hour=11, minute=0, second=0, microsecond=0):
+            fut_ltp = ltps[nifty_fut_token]
+            if not decisionPoints.checkTradeValidity(fut_ltp, optionType):
+                websocketService.send_toast("Wrong trade", "Price not near any DP")
+                logger.info(f"Wrong trade, Price not near any DP or DP already traded")
+                return
 
 
         if tradeManager.ltps[token] < price - 5 and order_type == "LIMIT":
@@ -99,13 +100,29 @@ def buyOrder(token, order_type, price, bof):
 
 
 def modifyActiveOrder(orderId, newPrice):
+    # token = "38614"
+    # trade1 = PartialTrade(
+    #     name="trade1", status=0, qty=100, entryPrice=100, slPrice=90, maxSlPrice=90,
+    #     targetPoints=110, orderType="STOP_LOSS", prd='I', exch="NSE_NFO", tsym="NIFTY 08 MAY 24500 PUT",
+    #     diff=0.2, token=token, optionType="PUT"
+    # )
+    #
+    # trade2 = PartialTrade(
+    #     name="trade2", status=0, qty=100, entryPrice=100, slPrice=90, maxSlPrice=90,
+    #     targetPoints=110, orderType="STOP_LOSS", prd='I', exch="NSE_NFO", tsym="NIFTY 08 MAY 24500 PUT",
+    #     diff=0.2, token=token, optionType="PUT"
+    # )
+    #
+    # tradeManager.addTrade(token,  trade1)
+    # tradeManager.addTrade(token, trade2)
+
 
     for token in tradeManager.trades:
         partialTrades = tradeManager.getTrades(token)
     trade_type = partialTrades['trade1'].orderType
     if trade_type == "STOP_LOSS":
         try:
-            for trade in partialTrades:
+            for trade in partialTrades.values():
                 logger.info(f"changing SL price of {trade.name} from {trade.slPrice} to {newPrice}")
                 res = dhan_api.Dhan.modify_order(order_id=trade.orderNumber, order_type="STOP_LOSS", leg_name="ENTRY_LEG",
                                            quantity=trade.qty,
@@ -115,14 +132,15 @@ def modifyActiveOrder(orderId, newPrice):
         except Exception as e:
             logger.error(f"error in modifying active SL order {e} ")
 
-    # if trade_type == "LIMIT":
-    #     try:
-    #         dhan_api.Dhan.modify_order(order_id=orderId, order_type="LIMIT", leg_name="ENTRY_LEG",quantity=order["quantity"],
-    #                                    price=newPrice, trigger_price=0, disclosed_quantity=0, validity='DAY')
-    #     except Exception as e:
-    #         logger.error("failed to modify order with error {}".format(e))
-        # else:
-        #     tradeManager['entryPrice'] = newPrice
+    if trade_type == "LIMIT":
+        try:
+            order = dhan_api.get_order_detail(orderId)
+            dhan_api.Dhan.modify_order(order_id=orderId, order_type="LIMIT", leg_name="ENTRY_LEG",quantity=order["quantity"],
+                                       price=newPrice, trigger_price=0, disclosed_quantity=0, validity='DAY')
+        except Exception as e:
+            logger.error("failed to modify order with error {}".format(e))
+        else:
+            tradeManager['entryPrice'] = newPrice
 
 
 def modifyActiveOrderOld(orderId, newPrice):

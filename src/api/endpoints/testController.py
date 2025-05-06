@@ -3,7 +3,7 @@ from conf.config import dhan_api, logger
 from services.riskManagement import riskManagementobj
 from services.tradeManagement import on_order_update, updateOpenOrders, manageOptionSl, updateTargets
 from services.test_tradeManagement import  run_feed, run
-
+from services.orderManagement import modifyActiveOrder
 from pydantic import BaseModel
 from conf import websocketService
 import random
@@ -193,3 +193,7 @@ async def tradeCheck( background_tasks: BackgroundTasks, trade: TradeRequest ):
 async def setTargets():
     targets = {'t1':100, 't2':100, 't3':30}
     updateTargets(targets)
+
+@router.get("/api/modifySl")
+async def setTargets():
+    modifyActiveOrder(12, 123);
