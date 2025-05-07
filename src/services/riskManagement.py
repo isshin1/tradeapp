@@ -48,9 +48,9 @@ class RiskManagement:
         if self.tradeCount >= self.maxTradeCount:
             logger.info("max trades crossed")
             return True
-        if self.pnl <= self.maxLoss * -2/3:
-            logger.info("2 sl crossed")
-            return True
+        # if self.pnl <= self.maxLoss * -2/3:
+        #     logger.info("2 sl crossed")
+        #     return True
         return False
 
     def get_buy_qty(self, index_name):

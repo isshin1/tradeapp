@@ -30,11 +30,11 @@ def buyOrder(token, order_type, price, bof):
             price = price + 8
 
         # return if last trade was within 20m of closing of previous trade
-        minutes_left = riskManagementobj.overTrading()
-        if minutes_left:
-            websocketService.send_toast("overtrading", f"wait for {minutes_left} minutes")
-            logger.info(f"overtrading, wait for {minutes_left} minutes")
-            return
+        # minutes_left = riskManagementobj.overTrading()
+        # if minutes_left:
+        #     websocketService.send_toast("overtrading", f"wait for {minutes_left} minutes")
+        #     logger.info(f"overtrading, wait for {minutes_left} minutes")
+        #     return
 
         # 2 trades before 12 and 2 after
         tradeCount = riskManagementobj.tradeCount
@@ -119,28 +119,33 @@ def modifyActiveOrder(orderId, newPrice):
 
     for token in tradeManager.trades:
         partialTrades = tradeManager.getTrades(token)
-    trade_type = partialTrades['trade1'].orderType
-    if trade_type == "STOP_LOSS":
-        try:
-            for trade in partialTrades.values():
-                logger.info(f"changing SL price of {trade.name} from {trade.slPrice} to {newPrice}")
-                res = dhan_api.Dhan.modify_order(order_id=trade.orderNumber, order_type="STOP_LOSS", leg_name="ENTRY_LEG",
-                                           quantity=trade.qty,
-                                           price=newPrice, trigger_price=newPrice +  0.5,
-                                           disclosed_quantity=0, validity='DAY')
-                logger.info(res)
-        except Exception as e:
-            logger.error(f"error in modifying active SL order {e} ")
 
-    if trade_type == "LIMIT":
+    if partialTrades is None:
         try:
             order = dhan_api.get_order_detail(orderId)
-            dhan_api.Dhan.modify_order(order_id=orderId, order_type="LIMIT", leg_name="ENTRY_LEG",quantity=order["quantity"],
-                                       price=newPrice, trigger_price=0, disclosed_quantity=0, validity='DAY')
+            if order["orderType"] == "LIMIT":
+                logger.info(f"changing limit order of orderId {orderId} to price {newPrice} ")
+                res = dhan_api.Dhan.modify_order(order_id=orderId, order_type="LIMIT", leg_name="ENTRY_LEG",quantity=order["quantity"],
+                                           price=newPrice, trigger_price=0, disclosed_quantity=0, validity='DAY')
+                logger.info(f"{res}")
+                # tradeManager['entryPrice'] = newPrice
         except Exception as e:
             logger.error("failed to modify order with error {}".format(e))
-        else:
-            tradeManager['entryPrice'] = newPrice
+
+    else:
+        trade_type = partialTrades['trade1'].orderType
+        if trade_type == "STOP_LOSS":
+            try:
+                for trade in partialTrades.values():
+                    logger.info(f"changing SL price of {trade.name} from {trade.slPrice} to {newPrice}")
+                    res = dhan_api.Dhan.modify_order(order_id=trade.orderNumber, order_type="STOP_LOSS", leg_name="ENTRY_LEG",
+                                               quantity=trade.qty,
+                                               price=newPrice, trigger_price=newPrice +  0.5,
+                                               disclosed_quantity=0, validity='DAY')
+                    logger.info(res)
+            except Exception as e:
+                logger.error(f"error in modifying active SL order {e} ")
+
 
 
 def modifyActiveOrderOld(orderId, newPrice):

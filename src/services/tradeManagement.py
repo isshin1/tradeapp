@@ -8,6 +8,8 @@ from models.partialTrade import PartialTrade
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from services.riskManagement import riskManagementobj
+from services.orderManagement import getOrderBook
+
 from utils.dhanHelper import getProductType
 # from conf import websocketService
 import concurrent.futures
@@ -507,6 +509,7 @@ def handle_order(order_update: dict):
 
     if order_update['txnType']  == 'S':
         handle_sell_order(token, order_update)
+    updateOpenOrders()
 
 def save_position():
     try:
@@ -527,10 +530,11 @@ def on_order_update(order_data: dict):
 
     # ignore orders other than nifty
     if order_update['displayName'].split(' ')[0] == 'NIFTY':
-        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
             executor.submit(handle_order, order_update)
             executor.submit(updateOpenOrders)
             executor.submit(save_position) #TODO: remove it later, only for testing refresh button
+            executor.submit(getOrderBook)
 
 
 
