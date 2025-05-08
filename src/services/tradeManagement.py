@@ -459,14 +459,16 @@ def handle_sell_order(token, order_update):
                     tradeManager.updatePartialTrade(partialTrade)
                     logger.info(f"{pt} completed {partialTrade.__str__()}")
 
-                    if pt == 'trade1': # if trade1 is completed, modify trade2 sl to 0
-                        partialTrade2 = trades['trade2']
-                        slPrice = partialTrade2.slPrice
-                        if partialTrade2.slPrice < partialTrade.entryPrice:
-                            partialTrade2.slPrice = partialTrade.entryPrice
-                            tradeManager.updatePartialTrade(partialTrade2)
-                            logger.info(f"changed sl of trade2 from {slPrice} to cost at {partialTrade.entryPrice} ")
-
+                    if pt == 'trade1':
+                        try:# if trade1 is completed, modify trade2 sl to 0
+                            partialTrade2 = trades['trade2']
+                            slPrice = partialTrade2.slPrice
+                            if partialTrade2.slPrice < partialTrade.entryPrice:
+                                partialTrade2.slPrice = partialTrade.entryPrice
+                                tradeManager.updatePartialTrade(partialTrade2)
+                                logger.info(f"changed sl of trade2 from {slPrice} to cost at {partialTrade.entryPrice} ")
+                        except Exception as e:
+                            logger.error(f"trade1 completed, cant modify trade2 {e}")
 
             flag = True
             for partialTrade in trades.values():

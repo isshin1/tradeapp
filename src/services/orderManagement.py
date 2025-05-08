@@ -121,6 +121,7 @@ def modifyActiveOrder(orderId, newPrice):
         partialTrades = tradeManager.getTrades(token)
 
     if partialTrades is None:
+        logger.info(f"no active trades, probably a limit order")
         try:
             order = dhan_api.get_order_detail(orderId)
             if order["orderType"] == "LIMIT":
