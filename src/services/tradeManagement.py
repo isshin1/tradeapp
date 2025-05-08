@@ -8,7 +8,7 @@ from models.partialTrade import PartialTrade
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from services.riskManagement import riskManagementobj
-from services.orderManagement import getOrderBook
+# from services.orderManagement import getOrderBook
 
 from utils.dhanHelper import getProductType
 # from conf import websocketService
@@ -534,7 +534,7 @@ def on_order_update(order_data: dict):
             executor.submit(handle_order, order_update)
             executor.submit(updateOpenOrders)
             executor.submit(save_position) #TODO: remove it later, only for testing refresh button
-            executor.submit(getOrderBook)
+            # executor.submit(getOrderBook)
 
 
 
