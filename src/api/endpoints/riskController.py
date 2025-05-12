@@ -16,7 +16,7 @@ async def killswitch():
 
 @router.post("/api/endSession")
 async def endSession():
-    return riskManagementobj.endSession()
+    return riskManagementobj.endSession(force=False)
 #
 # @router.get("/api/enablePihole")
 # async def enablePihole():

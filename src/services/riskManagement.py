@@ -60,12 +60,13 @@ class RiskManagement:
                 return index.get('buyQty')
         return 0
 
-    def endSession(self):
+    def endSession(self, force=True):
         logger.info(f"turning killswitch on with trades {self.tradeCount} and pnl {self.pnl}")
         dhan_api.cancel_all_orders()
         dhan_api.kill_switch('ON')
-        dhan_api.kill_switch('OFF')
-        return dhan_api.kill_switch('ON')
+        if force:
+            dhan_api.kill_switch('OFF')
+            return dhan_api.kill_switch('ON')
 
     def killswitch(self):
         # return
