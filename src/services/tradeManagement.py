@@ -72,14 +72,17 @@ def cancel_order_and_confirm(order_id, max_retries=10, delay=1):
     try:
         logger.info(f"Cancelling stop-loss order: {order_id}")
         res = dhan_api.cancel_order(OrderID=order_id)
-        if res.get("status") != "success":
+        # res = 'CANCELLED'
+        if res != 'CANCELLED':
             logger.info("Initial cancel request failed:", res)
             return False
-
+        # else:
+        #     logger.info("order is cancelled")
         # Now poll until the order is confirmed as canceled
         for attempt in range(max_retries):
             status = dhan_api.get_order_status(order_id)
-            if status.get("orderStatus").upper() == "CANCELLED":
+            logger.info(f"Order status: {status}")
+            if status == "CANCELLED":
                 logger.info("Order successfully cancelled.")
                 return True
             logger.info(f"Waiting for SL order to cancel... Attempt {attempt+1} with status {status}")
@@ -182,6 +185,7 @@ def manageTrade(ltp, trade):
         try:
             ## (A) keeping sl 3 points below latest swing point
             if current_time.second %10 == 0: # TODO: keep calculation at last second only or every 10 sec?
+                logger.info("trail check for new swing point")
                 df = candlestickData.getTokenDf(trade.token)
                 new_sl_time = candlestickData.getMspLow(nifty_fut_token, trade)
 
@@ -213,6 +217,7 @@ def manageTrade(ltp, trade):
 
         try:
             if current_time.second %10 ==  0:
+                logger.info(f"trail check for DP cross")
                 df = candlestickData.getTokenDf(trade.token)
                 fut_latest_price = candlestickData.getLatestPrice(nifty_fut_token)
                 new_sl_time, dp_price = candlestickData.getCrossedDp(fut_latest_price, nifty_fut_token, decisionPoints.decisionPoints, trade)
@@ -461,12 +466,15 @@ def handle_sell_order(token, order_update):
 
                     if pt == 'trade1':
                         try:# if trade1 is completed, modify trade2 sl to 0
-                            partialTrade2 = trades['trade2']
-                            slPrice = partialTrade2.slPrice
-                            if partialTrade2.slPrice < partialTrade.entryPrice:
-                                partialTrade2.slPrice = partialTrade.entryPrice
-                                tradeManager.updatePartialTrade(partialTrade2)
-                                logger.info(f"changed sl of trade2 from {slPrice} to cost at {partialTrade.entryPrice} ")
+                            if 'trade2' not in trades:
+                                logger.info(f"no trade 2 for this trade")
+                            else:
+                                partialTrade2 = trades['trade2']
+                                slPrice = partialTrade2.slPrice
+                                if partialTrade2.slPrice < partialTrade.entryPrice:
+                                    partialTrade2.slPrice = partialTrade.entryPrice
+                                    tradeManager.updatePartialTrade(partialTrade2)
+                                    logger.info(f"changed sl of trade2 from {slPrice} to cost at {partialTrade.entryPrice} ")
                         except Exception as e:
                             logger.error(f"trade1 completed, cant modify trade2 {e}")
 

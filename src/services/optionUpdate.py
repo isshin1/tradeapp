@@ -3,7 +3,7 @@ from models.TradeManager import tradeManager
 import math, mibian
 from datetime import datetime
 from conf import websocketService
-
+from services.tradeManagement import updateOpenOrders
 
 # r = redis.Redis(host='localhost', port=6379, db=0)
 
@@ -106,6 +106,7 @@ class optionUpdate:
 
         if flag == 1 or firstFetch:
             websocketService.update_atm_options(self.callToken, self.callSymbol, self.putToken, self.putSymbol)
+            updateOpenOrders()
             # r.publish('channel1', f"{self.callToken} {self.callSymbol} {self.putToken} {self.putSymbol}")
             # changeChart(self.callToken)
 

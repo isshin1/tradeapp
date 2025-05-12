@@ -16,6 +16,7 @@ from models.TradeManager import tradeManager
 import pandas as pd
 from random import randint
 from models.candlestickData import candlestickData
+from collections import OrderedDict
 ltps = ()
 
 def setLtps(ltps):
@@ -165,7 +166,7 @@ def manageTrade(ltp, token, pt, trade, current_time):
         #         continue
 
             if ltp >= trade.entryPrice +  trade.targetPoints   :
-                logger.info(f"{trade.name} target reached with points {trade.targetPoints}")
+                logger.info(f"{trade.name} target reached with points {trade.targetPoints} at time {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
                 logger.info(f"{trade.name} entry price {trade.entryPrice} exit price {trade.entryPrice +  trade.targetPoints}")
                 trade.exitPrice = trade.targetPoints
                 trade.status = 2
@@ -232,7 +233,7 @@ def manageTrade(ltp, token, pt, trade, current_time):
 
         if ltp <= trade.slPrice:
             if trade.slPrice > trade.entryPrice:
-                logger.info(f"{trade.name} entry price {trade.entryPrice} exit price {trade.slPrice}")
+                logger.info(f"{trade.name} entry price {trade.entryPrice} exit price {trade.slPrice} at time {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
                 logger.info(f"{trade.name} trade trailing ends with points {round(trade.slPrice - trade.entryPrice, 1)}")
             else:
                 logger.info(f"{trade.name} sl of {trade.entryPrice - trade.slPrice} points reached at time {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
@@ -573,10 +574,11 @@ def run( time, expiry, tsym , dps = [] ):
         token_df['time'] = pd.to_datetime(token_df['time'], format='%Y-%m-%d %H:%M:%S')
 
         df = token_df[(token_df.time >= time) & (token_df.time.dt.date == time.date())]
+        df = df.reset_index(drop=True)
         fut_df = fut_token_df[ (fut_token_df.time >= time) & (fut_token_df.time.dt.date == time.date())]
 
 
-        entryPrice = df.iloc[0]['close']
+        entryPrice = df.iloc[0]['open']
         target1, target2 = 25, 0
         token = "48695"
 
@@ -598,12 +600,27 @@ def run( time, expiry, tsym , dps = [] ):
 
         logger.info(f"starting trade with entry price {entryPrice}")
 
+        def df_to_dict(df):
+            result = OrderedDict()
+            for _, row in df.iterrows():
+                timestamp = row['time'].strftime('%Y-%m-%dT%H:%M:%S')
+                result[timestamp] = OrderedDict({
+                    'time': timestamp,
+                    'open': row['open'],
+                    'high': row['high'],
+                    'low': row['low'],
+                    'close': row['close'],
+                })
+            return result
 
         for idx, close_price in enumerate(df['close']):
             current_option_df = df.iloc[:idx + 1].copy()
-            candlestickData.candlestickData[int(token)] = current_option_df.to_dict()
+            candlestickData.candlestickData[int(token)] = df_to_dict(current_option_df)
             current_time = current_option_df.iloc[-1]['time']
-            candlestickData.candlestickData[int(nifty_fut_token)] = fut_df[fut_df['time'] <= current_time].to_dict()
+            if current_time.hour == 11 and current_time.minute == 33:
+                print("Match found: 11:33")
+
+            candlestickData.candlestickData[int(nifty_fut_token)] = df_to_dict( fut_df[fut_df['time'] <= current_time])
             if current_time == datetime(2025, 3, 28, 9, 36):
                 pass
             manageOptionSl(token, float(close_price), current_time)
@@ -612,10 +629,10 @@ def run( time, expiry, tsym , dps = [] ):
         trade2 = trades.get('trade2')
 
 
-        if trade2.status != 2:
+        if trade2 is not None and trade2.status != 2:
             # print("trade is not finished")
             # print(f"last price is {df.iloc[-1]['close']}")
-            logger.info(f"points are {df.iloc[-1]['close'] - entryPrice }")
+            logger.info(f"points are {round(df.iloc[-1]['close'] - entryPrice )}")
 
             # time.sleep(0.1)
     except Exception as e:
@@ -626,7 +643,12 @@ def run( time, expiry, tsym , dps = [] ):
 def run_feed( time, expiry, tsym , dps = [] ):
     try:
         candlestickData.reset()
-        feed_df = pd.read_csv('data/feed/' + time.strftime('%Y-%m-%d') + '.csv')
+
+        month = time.strftime('%m').zfill(2)
+        day = time.strftime('%d').zfill(2)
+        year = time.strftime('%Y')
+
+        feed_df = pd.read_csv(f'data/feed/{year}/{month}/' + time.strftime('%Y-%m-%d') + '.csv')
         feed_df['time'] = pd.to_datetime(feed_df['time'], format='%Y-%m-%dT%H:%M:%S')
         # token = dhan_api.get_security_id(tsym , "NFO")
         # tsym = "NIFTY 27 MAR 23650 CALL"
@@ -636,8 +658,7 @@ def run_feed( time, expiry, tsym , dps = [] ):
         expiry_month = int(datetime.strptime(tsym.split(' ')[2].title(), '%b').strftime('%m'))
         expiry = datetime(datetime.now().year, expiry_month, expiry_day)
         # add decision points
-        # month = expiry.strftime('%m').zfill(2)
-        # day = expiry.strftime('%d').zfill(2)
+
 
         decisionPoints.decisionPoints = []
         for dp in dps:
@@ -665,7 +686,7 @@ def run_feed( time, expiry, tsym , dps = [] ):
         tradeManager.addTrade(token, trade2)
 
 
-        logger.info(f"starting trade with entry price {entryPrice}")
+        logger.info(f"starting trade with entry price {entryPrice} at time {time}")
         trade_df = feed_df[feed_df['time'] >= time - timedelta(minutes = 1)]
 
         i = 0

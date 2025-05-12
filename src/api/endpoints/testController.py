@@ -1,7 +1,7 @@
 from fastapi import APIRouter, BackgroundTasks
 from conf.config import dhan_api, logger
 from services.riskManagement import riskManagementobj
-from services.tradeManagement import on_order_update, updateOpenOrders, manageOptionSl, updateTargets
+from services.tradeManagement import on_order_update, updateOpenOrders, manageOptionSl, updateTargets, cancel_order_and_confirm
 from services.test_tradeManagement import  run_feed, run
 from services.orderManagement import modifyActiveOrder
 from pydantic import BaseModel
@@ -197,3 +197,7 @@ async def setTargets():
 @router.get("/api/modifySl")
 async def setTargets():
     modifyActiveOrder(12, 123);
+
+@router.post("/api/cancelTest/{orderNumber}")
+async def cancelTest(orderNumber:int):
+    cancel_order_and_confirm(orderNumber)
