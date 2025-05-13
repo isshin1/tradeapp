@@ -519,7 +519,6 @@ def handle_order(order_update: dict):
 
     if order_update['txnType']  == 'S':
         handle_sell_order(token, order_update)
-    updateOpenOrders()
 
 def save_position():
     try:
@@ -542,9 +541,10 @@ def on_order_update(order_data: dict):
     if order_update['displayName'].split(' ')[0] == 'NIFTY':
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
             executor.submit(handle_order, order_update)
-            executor.submit(updateOpenOrders)
+            # executor.submit(updateOpenOrders)
             executor.submit(save_position) #TODO: remove it later, only for testing refresh button
             # executor.submit(getOrderBook)
+    updateOpenOrders()
 
 
 

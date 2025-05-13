@@ -1,52 +1,94 @@
 from fastapi import WebSocket
-
 import json
 from queue import Queue
 from conf.config import logger
-# from main import connection_manager
 from typing import List
 import asyncio
+import threading
 
 
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
+        self.queue = Queue()
+        self.background_task = None
+        self._event_loop = None
+        self._lock = threading.Lock()
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
 
+        # Start the background task if it's not already running
+        if self.background_task is None or self.background_task.done():
+            self._event_loop = asyncio.get_running_loop()
+            self.background_task = self._event_loop.create_task(self.process_queue_continuous())
+
     def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
 
     async def send_message(self, message: str):
+        dead_connections = []
         for connection in self.active_connections:
-            await connection.send_text(message)
+            try:
+                await connection.send_text(message)
+            except Exception as e:
+                logger.error(f"Failed to send message to client: {e}")
+                dead_connections.append(connection)
 
+        # Clean up any dead connections
+        for connection in dead_connections:
+            if connection in self.active_connections:
+                self.active_connections.remove(connection)
+
+    def queue_message(self, message):
+        """Thread-safe method to add a message to the queue"""
+        try:
+            self.queue.put(message)
+            # Ensure the processing task is running
+            self.ensure_queue_processing()
+        except Exception as e:
+            logger.error(f"Failed to queue message: {message} {e}")
+
+    def ensure_queue_processing(self):
+        """Ensures the queue processing task is running correctly"""
+        with self._lock:
+            # Only create a new task if we have an event loop and the task isn't running
+            if self._event_loop is not None and (self.background_task is None or self.background_task.done()):
+                try:
+                    self.background_task = self._event_loop.create_task(self.process_queue_continuous())
+                except RuntimeError as e:
+                    logger.error(f"Failed to create queue processing task: {e}")
+
+    async def process_queue_continuous(self):
+        """Continuously process messages from the queue"""
+        logger.debug("Starting background queue processing task")
+        while True:
+            try:
+                if not self.queue.empty():
+                    next_message = self.queue.get()
+                    if next_message:
+                        await self.send_message(next_message)
+                        logger.debug(f"Sent message: {next_message}")
+                else:
+                    # No messages in queue, sleep briefly to avoid CPU spinning
+                    await asyncio.sleep(0.01)
+
+                # If no connections, sleep a bit longer
+                if not self.active_connections:
+                    await asyncio.sleep(0.1)
+            except Exception as e:
+                logger.error(f"Error processing queue: {e}")
+                await asyncio.sleep(0.1)  # Sleep to avoid tight loop on errors
+
+
+# Singleton instance
 connection_manager = ConnectionManager()
 
-queue = Queue()
 
 def send_message(message):
-    try:
-        queue.put(message)
-        try:
-            loop = asyncio.get_running_loop()
-            loop.create_task(process_queue())
-        except RuntimeError:  # No active event loop
-            asyncio.run(process_queue())
-    except Exception as e:
-        logger.error(f"Failed to queue message: {message} {e}")
-
-async def process_queue():
-    while not queue.empty():
-        try:
-            next_message = queue.get()
-            if next_message:
-                await connection_manager.send_message(next_message)
-                logger.debug(f"Sent message: {next_message}")
-        except Exception as e:
-            logger.error(f"Failed to send message: {e}")
+    """Thread-safe function to send WebSocket messages"""
+    connection_manager.queue_message(message)
 
 def send_toast(title, description):
     res = {
