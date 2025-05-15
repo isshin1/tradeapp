@@ -57,7 +57,9 @@ class RiskManagement:
         indexes = config.get('intraday', {}).get('indexes', [])
         for index in indexes:
             if index.get('name') == index_name:
-                return index.get('buyQty')
+                qty = index.get('buyQty')
+                logger.info(f"buy quantity is {qty}")
+                return qty
         return 0
 
     def endSession(self, force=True):
