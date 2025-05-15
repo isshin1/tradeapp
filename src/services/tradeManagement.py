@@ -568,9 +568,9 @@ def updateTargets(targets):
             if trade.name == "trade1":
                     trade.targetPoints = targets.get("t1")
                     logger.info(f"{trade.name} target changed to {trade.targetPoints}")
-            # if trade.name == "trade2":
-            #     trade.targetPoints = targets.get("t2")
-            #     logger.info(f"{trade.name} target changed to {trade.targetPoints}")
+            if trade.name == "trade2":
+                trade.targetPoints = targets.get("t2")
+                logger.info(f"{trade.name} target changed to {trade.targetPoints}")
 
             # if trade.name == "t3":
             #     trade.set_target_price(targets.get("t3") + entry_price)
