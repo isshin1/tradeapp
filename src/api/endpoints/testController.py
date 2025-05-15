@@ -189,14 +189,14 @@ async def tradeCheck( background_tasks: BackgroundTasks, trade: TradeRequest ):
 #
 #     return {"message": "Trade started, not waiting for completion"}
 
-@router.get("/api/setTargets")
-async def setTargets():
-    targets = {'t1':100, 't2':100, 't3':30}
-    updateTargets(targets)
-
-@router.get("/api/modifySl")
-async def setTargets():
-    modifyActiveOrder(12, 123);
+# @router.get("/api/setTargets")
+# async def setTargets():
+#     targets = {'t1':100, 't2':100, 't3':30}
+#     updateTargets(targets)
+#
+# @router.get("/api/modifySl")
+# async def setTargets():
+#     modifyActiveOrder(12, 123);
 
 @router.post("/api/cancelTest/{orderNumber}")
 async def cancelTest(orderNumber:int):
