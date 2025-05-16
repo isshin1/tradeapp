@@ -690,13 +690,16 @@ def run_feed( time, expiry, tsym , dps = [] ):
         trade_df = feed_df[feed_df['time'] >= time - timedelta(minutes = 1)]
 
         i = 0
+        opt_price = 0
         for index, row in trade_df.iterrows():
             tt = row['time']
             token = row['token']
             price = row['price']
             feed_data = {'ltp': price, 'ft': tt.timestamp() }
             candlestickData.updateTickData(token, feed_data)
-            manageOptionSl(token, price, tt)
+            if tsym == row['tsym']:
+                opt_price = row['price']
+                manageOptionSl(token, opt_price, tt)
 
             if i%3000 == 0: #
                 pass
@@ -704,7 +707,9 @@ def run_feed( time, expiry, tsym , dps = [] ):
 
             if not tradeManager.isTradeActive():
                 break
-        logger.info("for loop ended")
+
+        if tradeManager.isTradeActive():
+            logger.info(f"trade ended at day close at price {opt_price}")
     except Exception as e:
         logger.error(e)
 

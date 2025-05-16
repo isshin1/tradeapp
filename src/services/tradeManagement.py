@@ -256,19 +256,20 @@ def manageTrade(ltp, trade):
 
 def exit_all_trades(trade):
     try:
-        dhan_api.cancel_order(OrderID=trade.orderNumber)
+        if cancel_order_and_confirm(trade.orderNumber):
+            # dhan_api.cancel_order(OrderID=trade.orderNumber)
 
-        dhan_api.Dhan.place_order(
-        security_id=trade.token,
-        exchange_segment="NSE_FNO",
-        transaction_type="SELL",
-        quantity=trade.qty,
-        order_type="MARKET",
-        product_type=trade.prd,
-        price=0
-        )
-        trade.status = 2
-        tradeManager.updatePartialTrade(trade)
+            dhan_api.Dhan.place_order(
+            security_id=trade.token,
+            exchange_segment="NSE_FNO",
+            transaction_type="SELL",
+            quantity=trade.qty,
+            order_type="MARKET",
+            product_type=trade.prd,
+            price=0
+            )
+            trade.status = 2
+            tradeManager.updatePartialTrade(trade)
         # new order placed, how will system know trade is over ?
         # dhan_api.cancel_all_orders()
         # tradeManager.removeTrade(trade)
