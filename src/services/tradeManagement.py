@@ -18,6 +18,7 @@ from models.TradeManager import tradeManager
 from models.candlestickData import candlestickData
 import time
 import pandas as pd
+import threading
 
 ltps = ()
 
@@ -72,6 +73,7 @@ def cancel_order_and_confirm(order_id, max_retries=10, delay=1):
     try:
         logger.info(f"Cancelling stop-loss order: {order_id}")
         res = dhan_api.cancel_order(OrderID=order_id)
+        logger.info(res)
         # res = 'CANCELLED'
         if res != 'CANCELLED':
             logger.info("Initial cancel request failed:", res)
@@ -258,8 +260,8 @@ def exit_all_trades(trade):
     try:
         if cancel_order_and_confirm(trade.orderNumber):
             # dhan_api.cancel_order(OrderID=trade.orderNumber)
-
-            dhan_api.Dhan.place_order(
+            logger.info(f"sl crossed, sl order {trade.orderNumber} is cancelled")
+            ret = dhan_api.Dhan.place_order(
             security_id=trade.token,
             exchange_segment="NSE_FNO",
             transaction_type="SELL",
@@ -268,6 +270,7 @@ def exit_all_trades(trade):
             product_type=trade.prd,
             price=0
             )
+            logger.info(ret)
             trade.status = 2
             tradeManager.updatePartialTrade(trade)
         # new order placed, how will system know trade is over ?
@@ -276,36 +279,44 @@ def exit_all_trades(trade):
     except Exception as e:
         logger.error(f"error in exiting all trades {e}")
 
+function_lock = threading.Lock()
+
 def manageOptionSl(token, ltp):
-    if not tradeManager.isTradeActive(token):
-        logger.debug("trade status false or current token is not of current trade")
+
+    if not function_lock.acquire(blocking=False):
+        logger.info("Another instance is already running, skipping this call.")
         return
+    try:
+        if not tradeManager.isTradeActive(token):
+            logger.debug("trade status false or current token is not of current trade")
+            return
 
-    trades = tradeManager.getTrades(token)
-    trade_items = list(trades.items())  # Copy items before submitting
+        trades = tradeManager.getTrades(token)
+        trade_items = list(trades.items())  # Copy items before submitting
 
-    with ThreadPoolExecutor(max_workers=len(trade_items)) as executor:
-        futures = {executor.submit(placeSl,  partialTrade): pt for pt, partialTrade in trade_items}
-        for future in as_completed(futures):
-            pt = futures[future]
-            try:
-                future.result()
-            except Exception as e:
-                logger.error(f"Error in placing SL for {pt}: {e}")
+        with ThreadPoolExecutor(max_workers=len(trade_items)) as executor:
+            futures = {executor.submit(placeSl,  partialTrade): pt for pt, partialTrade in trade_items}
+            for future in as_completed(futures):
+                pt = futures[future]
+                try:
+                    future.result()
+                except Exception as e:
+                    logger.error(f"Error in placing SL for {pt}: {e}")
 
-    trades = tradeManager.getTrades(token)
-    trade_items = list(trades.items())
+        trades = tradeManager.getTrades(token)
+        trade_items = list(trades.items())
 
-    with ThreadPoolExecutor(max_workers=len(trade_items)) as executor:
-        futures = {executor.submit(manageTrade, ltp, partialTrade): pt for pt, partialTrade in
-                   trade_items}
-        for future in as_completed(futures):
-            pt = futures[future]
-            try:
-                future.result()
-            except Exception as e:
-                logger.error(f"Error in managing trade for {pt}: {e}")
-
+        with ThreadPoolExecutor(max_workers=len(trade_items)) as executor:
+            futures = {executor.submit(manageTrade, ltp, partialTrade): pt for pt, partialTrade in
+                       trade_items}
+            for future in as_completed(futures):
+                pt = futures[future]
+                try:
+                    future.result()
+                except Exception as e:
+                    logger.error(f"Error in managing trade for {pt}: {e}")
+    finally:
+        function_lock.release()
 
 
 def createTrade(token, order_update):
@@ -607,7 +618,7 @@ def updateTargets(targets):
 
 
 def refreshTrade():
-
+    logger.info(f"resetting trades")
 
     for token in tradeManager.trades:
         tradeManager.removeTrade(token)

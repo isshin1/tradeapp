@@ -98,8 +98,8 @@ class RiskManagement:
     def overTrading(self):
         diff = (datetime.now() - self.lastTradeTime).total_seconds() / 60
         diff = ceil(diff)
-        if diff < 5:
-            return 5 - diff
+        if diff < 3:
+            return 3 - diff
         return 0
 
     def sanityCheck(self):
