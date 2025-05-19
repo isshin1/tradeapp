@@ -24,6 +24,7 @@ class RiskManagement:
 
         self.scheduler2 = threading.Timer(1, self.wait_timer)
         self.scheduler2.start()
+        logger.info(f"max loss is {self.maxLoss}")
 
     def getQty(self, price):
         while self.margin < price * self.qty:

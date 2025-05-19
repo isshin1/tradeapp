@@ -48,7 +48,7 @@ def buyOrder(token, order_type, price, bof):
         # ltps[nifty_fut_token] = 22950
 
 
-        if datetime.now() >= datetime.now().replace(hour=11, minute=0, second=0, microsecond=0) and  order_type == "LIMIT":
+        if order_type == "LIMIT":
             fut_ltp = ltps[nifty_fut_token]
             if not decisionPoints.checkTradeValidity(fut_ltp, optionType):
                 websocketService.send_toast("Wrong trade", "Price not near any DP")
