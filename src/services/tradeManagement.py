@@ -105,6 +105,9 @@ def manageTrade(ltp, trade):
     targetPoints = trade.targetPoints
     current_time = datetime.now()
 
+    # if targetPoints > 20 and points > 20:
+    #     if trade.slPrice < trade.entryPrice +
+
     # todo: find better logic
     if  targetPoints > 0:
         try:
