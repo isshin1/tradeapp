@@ -27,10 +27,16 @@ class RiskManagement:
         logger.info(f"max loss is {self.maxLoss}")
 
     def getQty(self, price):
-        while self.margin < price * self.qty:
+        while self.margin < price * self.qty and self.qty > 75:
             self.qty -= 75
+
+        # if loss is already more than 10 points, reduce qty to half
+        if self.pnl  < -1 * self.qty * 10:
+            self.qty  =  self.qty /2 if self.qty %2 == 0 else (self.qty - 75) / 2
+
         if self.qty < 75:
             self.qty = 75
+
         return self.qty
 
     def update(self):
