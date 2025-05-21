@@ -252,7 +252,7 @@ def manageTrade(ltp, trade):
                 )
             logger.info(res)
 
-    if ltp < trade.maxSlPrice:
+    if ltp < trade.slPrice:
         logger.info("limit sl order crossed, exiting all trades with market orders")
         # dhan_api.cancel_all_orders()
         exit_all_trades(trade)
