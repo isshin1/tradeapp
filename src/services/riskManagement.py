@@ -27,6 +27,8 @@ class RiskManagement:
         logger.info(f"max loss is {self.maxLoss}")
 
     def getQty(self, price):
+
+        # reduce quantity if margin is insufficient
         while self.margin < price * self.qty and self.qty > 75:
             self.qty -= 75
 

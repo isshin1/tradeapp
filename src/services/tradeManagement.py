@@ -565,6 +565,7 @@ def on_order_update(order_data: dict):
 
 
 def updateTargets(targets):
+    #TODO: dont allow target modification after 3 minutes  ?
 
     logger.info("targets are {}, {}".format(targets['t1'], targets['t2']))
 
@@ -575,6 +576,12 @@ def updateTargets(targets):
 
     for token in tradeManager.trades:
         trades = tradeManager.getTrades(token)
+
+        for trade in trades.values():
+            if trade.targetModified:
+                send_toast("Not Allowed", "Target already updated once")
+                return
+
         for trade in trades.values():
             entryPrice = trade.entryPrice
             initialTargetPoints = trade.targetPoints
@@ -585,15 +592,17 @@ def updateTargets(targets):
                 if points >= 20:
                     trade.targetPoints = points
                     logger.info(f"{trade.name} target changed to {trade.targetPoints}")
+                    trade.targetModified = True
                 else:
                     logger.info("not chaging t1 target below 20 points")
-            # if trade.name == "trade2":
-            #     points = targets.get("t2")
-            #     if points >= 20:
-            #         trade.targetPoints = targets.get("t2")
-            #         logger.info(f"{trade.name} target changed to {trade.targetPoints}")
-            #     else:
-            #         logger.info("not chaging t2 target below 20 points")
+            if trade.name == "trade2":
+                points = targets.get("t2")
+                if points >= 20:
+                    trade.targetPoints = targets.get("t2")
+                    logger.info(f"{trade.name} target changed to {trade.targetPoints}")
+                    trade.targetModified = True
+                else:
+                    logger.info("not chaging t2 target below 20 points")
 
             # if trade.name == "t3":
             #     trade.set_target_price(targets.get("t3") + entry_price)

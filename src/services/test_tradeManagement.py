@@ -583,13 +583,13 @@ def run( time, expiry, tsym , dps = [] ):
         token = "48695"
 
         trade1 = PartialTrade(
-            name="trade1", status=0, qty=150, entryPrice=entryPrice, slPrice=entryPrice-5, maxSlPrice=entryPrice-7,
+            name="trade1", status=0, qty=150, entryPrice=entryPrice, slPrice=entryPrice-10, maxSlPrice=entryPrice-7,
             targetPoints= target1, orderType="STOP_LOSS", prd='INTRADAY', exch="NSE_NFO", tsym=tsym,
             diff=0.2, token=token, optionType=optionType, startTime=time
         )
 
         trade2 = PartialTrade(
-            name='trade2', status=0, qty=75, entryPrice=entryPrice, slPrice=entryPrice-5, maxSlPrice=entryPrice-7,
+            name='trade2', status=0, qty=75, entryPrice=entryPrice, slPrice=entryPrice-10, maxSlPrice=entryPrice-7,
             targetPoints=target2, orderType="STOP_LOSS", prd='INTRADAY', exch="NSE_NFO", tsym=tsym,
             diff=0.2, token=token, optionType=optionType, startTime=time
         )
@@ -617,8 +617,8 @@ def run( time, expiry, tsym , dps = [] ):
             current_option_df = df.iloc[:idx + 1].copy()
             candlestickData.candlestickData[int(token)] = df_to_dict(current_option_df)
             current_time = current_option_df.iloc[-1]['time']
-            if current_time.hour == 11 and current_time.minute == 33:
-                print("Match found: 11:33")
+            # if current_time.hour == 11 and current_time.minute == 33:
+            #     print("Match found: 11:33")
 
             candlestickData.candlestickData[int(nifty_fut_token)] = df_to_dict( fut_df[fut_df['time'] <= current_time])
             if current_time == datetime(2025, 3, 28, 9, 36):

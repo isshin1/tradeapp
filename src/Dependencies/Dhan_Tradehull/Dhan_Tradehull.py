@@ -195,6 +195,7 @@ class Tradehull:
 		return security_id
 
 	def get_trading_symbol(self, token:int):
+		token = int(token)
 		instrument_df = self.instrument_df.copy()
 		security_check = instrument_df[((instrument_df['SEM_SMST_SECURITY_ID'] == token) )]
 		if security_check.empty:

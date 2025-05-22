@@ -25,6 +25,7 @@ class PartialTrade:
         self.optionType = optionType
         self.startTime = startTime
         self.dpsCrossed = []
+        self.targetModified = False
 
     def __str__(self):
         return json.dumps({

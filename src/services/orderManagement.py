@@ -190,7 +190,10 @@ def getOrderBook():
     orders = dhan_api.get_orderbook()
     try:
         validOrders = orders[orders["orderStatus"] == "TRADED"].reset_index(drop=True)
-        validOrders = validOrders[['orderId', 'transactionType', 'orderType', 'tradingSymbol', 'exchangeTime', 'filledQty', 'averageTradedPrice']]
+        validOrders = validOrders[['orderId', 'transactionType', 'orderType', 'tradingSymbol', 'exchangeTime', 'filledQty', 'averageTradedPrice', 'securityId']]
+        validOrders['tradingSymbol'] = validOrders['securityId'].apply(dhan_api.get_trading_symbol)
+        validOrders = validOrders.drop('securityId', axis=1)
+
         orderFile = order_folder + str(datetime.now().date()) + '.csv'
         validOrders.to_csv(orderFile, index=False)
     except Exception as e:
