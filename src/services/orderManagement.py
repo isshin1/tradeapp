@@ -30,11 +30,11 @@ def buyOrder(token, order_type, price, bof):
             price = price + 8
 
         # 2 trades before 12 and 2 after
-        tradeCount = riskManagementobj.tradeCount
-        if tradeCount >=3 and datetime.now() <= datetime.now().replace(hour=12, minute=0, second=0, microsecond=0):
-            websocketService.send_toast("overtrading", f"{tradeCount} trades done before 12 PM")
-            logger.info(f"{tradeCount} trades done before 12 PM")
-            return
+        # tradeCount = riskManagementobj.tradeCount
+        # if tradeCount >=3 and datetime.now() <= datetime.now().replace(hour=12, minute=0, second=0, microsecond=0):
+        #     websocketService.send_toast("overtrading", f"{tradeCount} trades done before 12 PM")
+        #     logger.info(f"{tradeCount} trades done before 12 PM")
+        #     return
 
         # return if last trade was within 5 m of closing of previous trade
         minutes_left = riskManagementobj.overTrading()

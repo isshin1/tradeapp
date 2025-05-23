@@ -9,7 +9,7 @@ import csv, os
 import pandas as pd
 # import pause
 from services.orderManagement import getOrderBook
-from services.postMarketAnalysis import postMarketAnalysis
+# from services.postMarketAnalysis import postMarketAnalysis
 # %%
 # with open('shared_libraries/config.yaml') as f:
 #     config = yaml.load(f, Loader=yaml.FullLoader)
