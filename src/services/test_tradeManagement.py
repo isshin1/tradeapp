@@ -235,8 +235,10 @@ def manageTrade(ltp, token, pt, trade, current_time):
             if trade.slPrice > trade.entryPrice:
                 logger.info(f"{trade.name} entry price {trade.entryPrice} exit price {trade.slPrice} at time {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
                 logger.info(f"{trade.name} trade trailing ends with points {round(trade.slPrice - trade.entryPrice, 1)}")
+                trade.points =  round(trade.slPrice - trade.entryPrice, 1)
             else:
                 logger.info(f"{trade.name} sl of {trade.entryPrice - trade.slPrice} points reached at time {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
+                trade.points = -1 * round(trade.entryPrice - trade.slPrice)
             trade.status = 2
     except Exception as e:
         logger.error(f"error in managing trade at time {current_time} {e}")
@@ -244,7 +246,7 @@ def manageTrade(ltp, token, pt, trade, current_time):
     tradeManager.updatePartialTrade(trade)
     if trade.status == 2 :
         logger.info("trade over")
-        tradeManager.removeTrade(trade.token)
+        # tradeManager.removeTrade(trade.token)
 
 def exit_all_trades(trade):
     try:
@@ -633,7 +635,10 @@ def run( time, expiry, tsym , dps = [] ):
             # print("trade is not finished")
             # print(f"last price is {df.iloc[-1]['close']}")
             logger.info(f"points are {round(df.iloc[-1]['close'] - entryPrice )}")
+            return round(df.iloc[-1]['close'] - entryPrice )
 
+        tradeManager.removeTrade(token)
+        return trade2.points
             # time.sleep(0.1)
     except Exception as e:
         logger.error(e)

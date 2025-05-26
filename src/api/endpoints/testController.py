@@ -3,6 +3,7 @@ from conf.config import dhan_api, logger
 from services.riskManagement import riskManagementobj
 from services.tradeManagement import on_order_update, updateOpenOrders, manageOptionSl, updateTargets, cancel_order_and_confirm
 from services.test_tradeManagement import  run_feed, run
+from services.postMarketAnalysis import trailTrades
 from services.orderManagement import modifyActiveOrder
 from pydantic import BaseModel
 from conf import websocketService
@@ -201,3 +202,7 @@ async def tradeCheck( background_tasks: BackgroundTasks, trade: TradeRequest ):
 @router.post("/api/cancelTest/{orderNumber}")
 async def cancelTest(orderNumber:int):
     cancel_order_and_confirm(orderNumber)
+
+@router.post("/api/trailTest/{days}")
+async def trailTest(days:int):
+    trailTrades(days)

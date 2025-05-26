@@ -119,14 +119,17 @@ def get_expiries_list(symbol, exch, uc, lc, current_expiry):
 
 # %%
 def download_weekly_options(symbol, expiries_list, prev_expiry, current_expiry):
-    for row in expiries_list.itertuples():
-        for interval in range(1, 7, 2):
-            ret = shoonya_api.get_time_price_series(exchange=str(row.Exchange), token=str(row.Token),
-                                            starttime=prev_expiry.timestamp(), interval=interval)
-            ret.reverse()
-            out_file = out_folder + '/' + symbol + '/optionData/' + current_expiry.strftime('%Y/%m/%d/') + str(
-                interval) + 'm/' + row.TradingSymbol + '.csv'
-            dump_to_csv(ret, out_file)
+    try:
+        for row in expiries_list.itertuples():
+            for interval in range(1, 7, 2):
+                ret = shoonya_api.get_time_price_series(exchange=str(row.Exchange), token=str(row.Token),
+                                                starttime=prev_expiry.timestamp(), interval=interval)
+                ret.reverse()
+                out_file = out_folder + '/' + symbol + '/optionData/' + current_expiry.strftime('%Y/%m/%d/') + str(
+                    interval) + 'm/' + row.TradingSymbol + '.csv'
+                dump_to_csv(ret, out_file)
+    except Exception as e:
+        logger.error(e)
 
 
 def parse_weekly_options(symbol, exch, token):
@@ -271,7 +274,7 @@ def download_candlestick_data():
     now = datetime.now()
     target_time = now.replace(hour=15, minute=31, second=0)
 
-    if now >= target_time:
+    if now >= target_time or datetime.now().weekday() >= 5:
         logger.info("downloading candlestick data")
         scheduler.add_job(downloadCheck, 'date', run_date=now + timedelta(seconds=1), misfire_grace_time=30)
         # scheduler.add_job(getOrderBook, 'date', run_date=now + timedelta(seconds=1))

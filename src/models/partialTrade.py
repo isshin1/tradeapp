@@ -26,6 +26,7 @@ class PartialTrade:
         self.startTime = startTime
         self.dpsCrossed = []
         self.targetModified = False
+        self.points = 0
 
     def __str__(self):
         return json.dumps({
