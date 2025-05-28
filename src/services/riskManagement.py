@@ -27,19 +27,19 @@ class RiskManagement:
         logger.info(f"max loss is {self.maxLoss}")
 
     def getQty(self, price):
-
+        qty = self.qty
         # reduce quantity if margin is insufficient
-        while self.margin < price * self.qty and self.qty > 75:
-            self.qty -= 75
+        while self.margin < price * qty and qty > 75:
+            qty -= 75
 
         # if loss is already more than 10 points, reduce qty to half
         if self.pnl  < -1 * self.qty * 10:
-            self.qty  =  self.qty /2 if self.qty %2 == 0 else (self.qty - 75) / 2
+            qty  =  qty /2 if qty %2 == 0 else (qty - 75) / 2
 
-        if self.qty < 75:
-            self.qty = 75
+        if qty < 75:
+            qty = 75
 
-        return self.qty
+        return qty
 
     def update(self):
         self.tradeCount = dhanHelper.getTradeCount()
@@ -57,9 +57,9 @@ class RiskManagement:
         if self.tradeCount >= self.maxTradeCount:
             logger.info("max trades crossed")
             return True
-        # if self.pnl <= self.maxLoss * -2/3:
-        #     logger.info("2 sl crossed")
-        #     return True
+        if self.pnl - self.getQty(0) * 10 <= self.maxLoss :
+            logger.info("next trade will cross maxloss, auto exiting ")
+            return True
         return False
 
     def get_buy_qty(self, index_name):

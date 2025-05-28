@@ -206,3 +206,11 @@ async def cancelTest(orderNumber:int):
 @router.post("/api/trailTest/{days}")
 async def trailTest(days:int):
     trailTrades(days)
+
+@router.get("/api/getBrokerage")
+async def getBrokerage():
+    history = dhan_api.Dhan.get_trade_history('2025-05-27','2025-05-29', 0)
+    print(history)
+
+
+

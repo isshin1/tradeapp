@@ -595,14 +595,14 @@ def updateTargets(targets):
                     trade.targetModified = True
                 else:
                     logger.info("not chaging t1 target below 20 points")
-            if trade.name == "trade2":
-                points = targets.get("t2")
-                if points >= 20:
-                    trade.targetPoints = targets.get("t2")
-                    logger.info(f"{trade.name} target changed to {trade.targetPoints}")
-                    trade.targetModified = True
-                else:
-                    logger.info("not chaging t2 target below 20 points")
+            # if trade.name == "trade2":
+            #     points = targets.get("t2")
+            #     if points >= 20:
+            #         trade.targetPoints = targets.get("t2")
+            #         logger.info(f"{trade.name} target changed to {trade.targetPoints}")
+            #         trade.targetModified = True
+            #     else:
+            #         logger.info("not chaging t2 target below 20 points")
 
             # if trade.name == "t3":
             #     trade.set_target_price(targets.get("t3") + entry_price)
