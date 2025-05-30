@@ -57,7 +57,7 @@ class RiskManagement:
         if self.tradeCount >= self.maxTradeCount:
             logger.info("max trades crossed")
             return True
-        if self.pnl - self.getQty(0) * 10 <= self.maxLoss :
+        if self.pnl - self.getQty(0) * 10 <= -1 * self.maxLoss :
             logger.info("next trade will cross maxloss, auto exiting ")
             return True
         return False
