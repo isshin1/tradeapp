@@ -143,7 +143,7 @@ def modifyActiveOrder(orderId, newPrice):
                     logger.info(f"changing SL price of {trade.name} from {trade.slPrice} to {newPrice}")
                     res = dhan_api.Dhan.modify_order(order_id=trade.orderNumber, order_type="STOP_LOSS", leg_name="ENTRY_LEG",
                                                quantity=trade.qty,
-                                               price=newPrice, trigger_price=newPrice +  0.5,
+                                               price=newPrice - 0.3, trigger_price=newPrice,
                                                disclosed_quantity=0, validity='DAY')
                     logger.info(res)
             except Exception as e:
