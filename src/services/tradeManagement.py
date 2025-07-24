@@ -45,7 +45,7 @@ def placeSl(trade):
     logger.info(f"placing sl order for {trade.name} and token {trade.token}")
 
     res = dhan_api.Dhan.place_order(security_id=trade.token, exchange_segment="NSE_FNO", transaction_type="SELL",
-                quantity=trade.qty, order_type="STOP_LOSS", product_type=trade.prd, price=trade.slPrice, trigger_price=trade.slPrice + trade.diff)
+                quantity=trade.qty, order_type="STOP_LOSS", product_type=trade.prd, price=trade.slPrice - trade.diff, trigger_price=trade.slPrice )
     logger.info(res)
     # Todo: fix order status when rejected
 
@@ -165,7 +165,7 @@ def manageTrade(ltp, trade):
                     try:
                         res = dhan_api.Dhan.place_order(security_id=trade.token, exchange_segment="NSE_FNO", transaction_type="SELL",
                                                         quantity=trade.qty, order_type="STOP_LOSS", product_type=trade.prd,
-                                                        price=trade.slPrice, trigger_price=trade.slPrice + trade.diff)
+                                                        price=trade.slPrice - trade.diff, trigger_price=trade.slPrice )
                         if res['status'] != 'success':
                             logger.info(f"error in placing new sl order after cancelling limit order {res['remarks']}")
                         else:
@@ -438,8 +438,8 @@ def updateSl(token, new_sl_price, order_update):
                                 order_type="STOP_LOSS",
                                 leg_name="ENTRY_LEG",
                                 quantity=partial_trade.qty,
-                                price=partial_trade.slPrice,
-                                trigger_price=partial_trade.slPrice + 0.2,
+                                price=partial_trade.slPrice - partial_trade.diff,
+                                trigger_price=partial_trade.slPrice ,
                                 disclosed_quantity=0,
                                 validity='DAY'
                             )
