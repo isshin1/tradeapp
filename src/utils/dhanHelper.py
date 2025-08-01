@@ -1,4 +1,5 @@
 from conf.config import dhan_api, logger
+import requests
 
 def getPnl():
     positions = dhan_api.get_positions()

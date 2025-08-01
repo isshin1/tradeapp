@@ -7,7 +7,8 @@ import pyotp
 import logging
 from utils.misc import Misc
 import glob, os, sys
-
+from services.alerts import Alerts
+import requests
 date_str = str(datetime.now().today().date())
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 feed_folder = BASE_DIR + '/data/feed/' + date_str.split('-')[0] + '/' + date_str.split('-')[1] + '/'
@@ -34,15 +35,40 @@ with open(BASE_DIR+'/conf/config.yaml', 'r') as file:
 
 client_id = config['dhan']['client_id']
 access_token = config['dhan']['access_token']
+whatsapp_api_key = config['whatsapp']['api_key']
+
+alert = Alerts(whatsapp_api_key)
+# alert.send_message("trading session started")
 
 
 # Get logging level from conf
 log_level_str = config.get('logging', {}).get('level', 'INFO')
 log_level = getattr(logging, log_level_str.upper(), logging.INFO)
 
+
+
+def checkTokenValidity(token):
+    url = 'https://api.dhan.co/v2/profile'
+    headers = {
+        'access-token': token # Replace with actual JWT
+    }
+
+    response = requests.get(url, headers=headers)
+    res = response.json()
+    if 'errorType' in res:
+        print("Token is invalid")
+        alert.send_message(res['errorMessage'])
+        exit(1)
+    print(response.status_code)
+    print(response.json())  # or response.text if not JSON
+
+
+
 nifty_fut_token = 0
 try:
     # dhan = dhanhq(client_id, acces_token)
+    checkTokenValidity(access_token)
+
     dhan_api = Tradehull(client_id, access_token, log_level, BASE_DIR)
     logger = dhan_api.logger
     shoonya_api = ShoonyaApiPy()
@@ -68,6 +94,9 @@ try:
 
 except Exception as err :
     print(f"encountered error on logging in {err}")
+    alert.send_message(err)
     exit(1)
 
 ltps = dict()
+
+
