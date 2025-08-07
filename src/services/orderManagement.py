@@ -146,6 +146,7 @@ def modifyActiveOrder(orderId, newPrice):
                                                price=newPrice - 0.3, trigger_price=newPrice,
                                                disclosed_quantity=0, validity='DAY')
                     logger.info(res)
+                    trade.slPrice = newPrice - 0.3
             except Exception as e:
                 logger.error(f"error in modifying active SL order {e} ")
 

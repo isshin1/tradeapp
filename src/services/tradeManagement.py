@@ -463,7 +463,7 @@ def handle_sell_order(token, order_update):
         logger.info(f"new manual sl order received for token {token}")
         newSlPrice = order_update['price']
         logger.info(f"new sl price is {newSlPrice}")
-        updateSl(token, newSlPrice, order_update)
+        # updateSl(token, newSlPrice, order_update)
 
     elif order_update['txnType'].upper() == 'S' and order_update['status'].upper() == 'TRADED' and order_update['orderType'].upper() == 'LMT':
         logger.info(f"sell limit order completed")
