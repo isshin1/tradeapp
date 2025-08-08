@@ -1,7 +1,7 @@
 from fastapi import WebSocket
 import json
 from queue import Queue
-from conf.config import logger
+from conf.logging_config import logger
 from typing import List
 import asyncio
 import threading

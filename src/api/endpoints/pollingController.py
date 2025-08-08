@@ -1,22 +1,24 @@
 from fastapi import APIRouter, HTTPException, Depends
 from conf.config import dhan_api
-from services.optionUpdate import optionUpdateObj
-from services.tradeManagement import updateOpenOrders
+# from services.optionUpdate import optionUpdateObj
+# from services.tradeManagement import updateOpenOrders
+from conf.config import optionUpdate,  tradeManagement
 from pydantic import BaseModel
 from schemas.planSchema import PlanSchema
 from models.DecisionPoints import decisionPoints
 from datetime import date
 from utils.databaseHelper import db_helper
 from sqlalchemy.orm import Session
-from conf.config import logger
+from conf.config import *
+from conf.logging_config import logger
 from typing import Dict
 
 router = APIRouter()
 
 @router.post("/api/firstFetch")
 async def firstFetch():
-    optionUpdateObj.updateOptions(firstFetch=True)
-    updateOpenOrders()
+    optionUpdate.updateOptions(firstFetch=True)
+    tradeManagement.updateOpenOrders()
 
 @router.get("/api/margin")
 async def getMargin():

@@ -203,6 +203,14 @@ class Tradehull:
 		security_tsym = security_check.iloc[-1]['SEM_CUSTOM_SYMBOL']
 		return security_tsym
 
+	def get_expiry_from_tsym(self, tsym:str):
+		instrument_df = self.instrument_df.copy()
+		security_check = instrument_df[((instrument_df['SEM_CUSTOM_SYMBOL'] == tsym) )]
+		if security_check.empty:
+			raise Exception("Check the tsym")
+		expiry = security_check.iloc[-1]['SEM_EXPIRY_DATE']
+		return  pd.to_datetime(expiry, format='%Y-%m-%d %H:%M:%S')
+
 	def get_token(self, tsym:str):
 		instrument_df = self.instrument_df.copy()
 

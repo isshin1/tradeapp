@@ -1,5 +1,6 @@
 import requests
-from conf.config import config, logger
+
+from conf.logging_config import logger
 import urllib.parse
 import os
 # Configuration
@@ -17,7 +18,7 @@ API_TOKEN = "your-api-token"
 REGEX_TO_BLOCK = "\\bexample\\.com\\b"  # Example regex to block
 
 class Pihole:
-    def __init__(self):
+    def __init__(self, config):
         self.password = config['pihole']['password']
         self.url = PIHOLE_AUTH_URL
         self.sid = self.authenticate()
@@ -92,8 +93,6 @@ class Pihole:
         self.enablePihole(seconds = duration_minutes * 60)
 
 
-pihole = Pihole()
-pihole.disablePihole() # disable blocking on startup
 
 
 

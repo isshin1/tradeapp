@@ -7,8 +7,10 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime, timedelta
 import csv, os
 import pandas as pd
+from conf.logging_config import logger
+
 # import pause
-from services.orderManagement import getOrderBook
+
 # from services.postMarketAnalysis import postMarketAnalysis
 # %%
 # with open('shared_libraries/config.yaml') as f:
@@ -250,7 +252,7 @@ def downloadCheck(force=False):
     if download or force:
         logger.info("Downloading candlestick data now")
         parse_indexes()
-        getOrderBook()
+        orderManagement.getOrderBook()
         if os.path.exists('/.dockerenv'):
             logger.info("stopping container now")
             misc.closeContainer()
@@ -267,7 +269,7 @@ def download_candlestick_data():
         logger.info("weekday, skipping candle download")
         return
 
-    getOrderBook()
+    orderManagement.getOrderBook()
 
     scheduler = BackgroundScheduler()
 
@@ -277,13 +279,13 @@ def download_candlestick_data():
     if now >= target_time or datetime.now().weekday() >= 5:
         logger.info("downloading candlestick data")
         scheduler.add_job(downloadCheck, 'date', run_date=now + timedelta(seconds=1), misfire_grace_time=30)
-        # scheduler.add_job(getOrderBook, 'date', run_date=now + timedelta(seconds=1))
+        # scheduler.add_job(orderManagement.getOrderBook, 'date', run_date=now + timedelta(seconds=1))
 
     else:
         # Otherwise, schedule the task to run at the next 2 PM
         logger.info(f"adding job to download candlestick data for {target_time.strftime('%r')}")
         scheduler.add_job(downloadCheck, 'date', run_date=target_time, misfire_grace_time=30)
-        # scheduler.add_job(getOrderBook, 'date', run_date=target_time)
+        # scheduler.add_job(orderManagement.getOrderBook, 'date', run_date=target_time)
 
     scheduler.start()
 

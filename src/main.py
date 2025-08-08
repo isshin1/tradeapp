@@ -1,11 +1,10 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from contextlib import asynccontextmanager
 
-from services.riskManagement import riskManagementobj
-from conf.dhanWebsocket import start_dhan_websocket
-from conf.shoonyaWebsocket import start_shoonya_websocket
-from conf.config import logger
-
+# # from services.riskManagement import riskManagementobj
+# from conf.dhanWebsocket import start_dhan_websocket
+from conf.config import *
+from conf.logging_config import logger
 from api.endpoints import riskController , testController, orderController, pollingController, tradeController
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -35,14 +34,14 @@ app.add_middleware(
 # Define the startup function
 async def startup_function():
     logger.info("Application has started!")
-    start_shoonya_websocket()
-    start_dhan_websocket()
+    # start_shoonya_websocket()
+    # start_dhan_websocket()
     download_candlestick_data()
-    riskManagementobj.killswitch()
 
 # Define the shutdown function
 async def shutdown_function():
-    print("Application is shutting down!")
+    logger.info("Application is shutting down, enabling killswitch")
+    riskManagement.endSession()
 
     mode = 0o777
     path = 'data'

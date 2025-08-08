@@ -2,7 +2,11 @@ import yaml
 from datetime import datetime
 # from Dhan_Tradehull import Tradehull
 from Dependencies.Dhan_Tradehull.Dhan_Tradehull import Tradehull
-from api.endpoints.riskController import killswitch
+from conf.dhanWebsocket import DhanWebsocket
+from conf.shoonyaWebsocket import ShoonyaWebsocket
+from services.orderManagement import OrderManagement
+from services.pihole import Pihole
+from utils.dhanHelper import DhanHelper
 from utils.shoonyaApiHelper import ShoonyaApiPy
 import pyotp
 import logging
@@ -10,6 +14,12 @@ from utils.misc import Misc
 import glob, os, sys
 from services.alerts import Alerts
 import requests
+from conf.logging_config import logger
+from services.riskManagement import RiskManagement
+from services.optionUpdate import OptionUpdate
+from services.tradeManagement import TradeManagement
+from models.TradeManager import TradeManager
+
 date_str = str(datetime.now().today().date())
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 feed_folder = BASE_DIR + '/data/feed/' + date_str.split('-')[0] + '/' + date_str.split('-')[1] + '/'
@@ -46,9 +56,9 @@ alert = Alerts(whatsapp_api_key)
 log_level_str = config.get('logging', {}).get('level', 'INFO')
 log_level = getattr(logging, log_level_str.upper(), logging.INFO)
 
-
-
 def checkTokenValidity(token):
+    # from services.riskManagement import RiskManagement
+    # riskManagementobj = RiskManagement()
     url = 'https://api.dhan.co/v2/profile'
     headers = {
         'access-token': token # Replace with actual JWT
@@ -57,22 +67,22 @@ def checkTokenValidity(token):
     response = requests.get(url, headers=headers)
     res = response.json()
     if 'errorType' in res:
-        print("Token is invalid")
-        killswitch()
-        # alert.send_message(res['errorMessage'])
-        exit(1)
-    print(response.status_code)
-    print(response.json())  # or response.text if not JSON
+        logger.error("Token is invalid")
+        alert.send_message("Dhan api error", res['errorMessage'])
+        raise Exception("Dhan Token is invalid")
+    logger.info(response.status_code)
+    logger.info(response.json())  # or response.text if not JSON
+
 
 
 
 nifty_fut_token = 0
 try:
     # dhan = dhanhq(client_id, acces_token)
-    checkTokenValidity(access_token)
+
 
     dhan_api = Tradehull(client_id, access_token, log_level, BASE_DIR)
-    logger = dhan_api.logger
+    # logger = dhan_api.logger
     shoonya_api = ShoonyaApiPy()
     # api.logout()
     cred = config['shoonya']
@@ -94,11 +104,31 @@ try:
     target1, target2 = config['intraday']['indexes'][0]['targets']
     logger.info(f"default targets are {target1} and {target2}")
 
+
+    dhanHelper = DhanHelper(dhan_api)
+    riskManagement = RiskManagement(config, dhan_api, dhanHelper)
+    tradeManager = TradeManager()
+
+    tradeManagement =  TradeManagement(config, dhan_api, shoonya_api, tradeManager, nifty_fut_token, riskManagement, dhanHelper)
+    optionUpdate = OptionUpdate(config, dhan_api, shoonya_api,  misc, tradeManagement, tradeManager)
+
+    dhanwebsocket = DhanWebsocket(client_id, access_token, tradeManagement )
+    dhanwebsocket.start_dhan_websocket()
+
+    shoonyaWebsocket = ShoonyaWebsocket(config, tradeManagement, shoonya_api, nifty_fut_token, dhan_api, feed_folder, optionUpdate )
+    shoonyaWebsocket.start_shoonya_websocket()
+
+    checkTokenValidity(access_token)
+
+    orderManagement = OrderManagement(dhan_api, shoonya_api , order_folder, nifty_fut_token, riskManagement,   tradeManager)
+    # pihole = Pihole()
+    # pihole.disablePihole()  # disable blocking on startup
+
 except Exception as err :
-    print(f"encountered error on logging in {err}")
-    alert.send_message(err)
+    logger.error(f"encountered error on logging in {err}")
+    alert.send_message("enabling killswitch", str(err))
+    riskManagement.killswitch()
     exit(1)
 
-ltps = dict()
 
 

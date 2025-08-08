@@ -1,4 +1,4 @@
-from conf.config import logger
+from conf.logging_config import logger
 from utils.databaseHelper import db_helper
 from sqlalchemy.orm import  Session
 from fastapi import Depends

@@ -1,7 +1,7 @@
 from conf.config import logger, order_folder
 from datetime import datetime, timedelta
 import pandas as pd
-from services.test_tradeManagement import run
+# from services.test_tradeManagement import run
 
 
 
@@ -49,27 +49,27 @@ def getExpiryFromTsymFolder(tsym:str):
     expiry = datetime.fromisoformat(expiry_str)
     return expiry
 
-def trailTrades(days=0):
-    # orderFile = order_folder + str(datetime.now().date()) + '.csv'
-    orderFile = order_folder + str((datetime.now() - timedelta(days=days)).date()) + '.csv'
-
-    df = pd.read_csv(orderFile)
-    df['exchangeTime'] = pd.to_datetime(df['exchangeTime'])
-    df = df.sort_values(by='exchangeTime', ascending=True)
-
-    day_points = []
-    for i, row in df.iterrows():
-        if row['transactionType'] == 'BUY':
-            _, _,_, tsym, time, _, price  = row
-            # expiry = getExpiryFromTsym(tsym) # revert it back
-            expiry = getExpiryFromTsymFolder(tsym)
-            points = run(time,expiry, tsym, [] )
-            day_points.append(points)
-                # df['trailPoints'] =
-    i = 1
-    for points in day_points:
-        print(i, points)
-        i += 1
+# def trailTrades(days=0):
+#     # orderFile = order_folder + str(datetime.now().date()) + '.csv'
+#     orderFile = order_folder + str((datetime.now() - timedelta(days=days)).date()) + '.csv'
+#
+#     df = pd.read_csv(orderFile)
+#     df['exchangeTime'] = pd.to_datetime(df['exchangeTime'])
+#     df = df.sort_values(by='exchangeTime', ascending=True)
+#
+#     day_points = []
+#     for i, row in df.iterrows():
+#         if row['transactionType'] == 'BUY':
+#             _, _,_, tsym, time, _, price  = row
+#             # expiry = getExpiryFromTsym(tsym) # revert it back
+#             expiry = getExpiryFromTsymFolder(tsym)
+#             points = run(time,expiry, tsym, [] )
+#             day_points.append(points)
+#                 # df['trailPoints'] =
+#     i = 1
+#     for points in day_points:
+#         print(i, points)
+#         i += 1
 # trailTrades()
 
 # postMarketAnalysis = PostMarketAnalysis()

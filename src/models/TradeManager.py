@@ -1,7 +1,6 @@
 class TradeManager:
     def __init__(self):
         self.trades = dict()
-        self.ltps = dict()
         # self.trade = None
 
     def setTrade(self, trade):
@@ -38,7 +37,6 @@ class TradeManager:
     # def removeTrade(self):
     #     self.trade = None
 
-tradeManager = TradeManager()
 
 # tradeManagerDhan = TradeManager()
 # tradeManagerShoonya = TradeManager()

@@ -1,22 +1,26 @@
 from math import ceil
 
-from conf.config import config, dhan_api, logger
-from utils import dhanHelper
+from conf.logging_config import logger
+
 import os, subprocess
 from datetime import datetime, time
 import threading
 from conf.websocketService import update_timer
+
 # from services.pihole import pihole
 class RiskManagement:
-    def __init__(self):
+    def __init__(self, config, dhan_api, dhanHelper ):
         self.pnl = 0
         self.peakPnl = 0
         self.tradeCount = 0
         self.maxTradeCount = config['intraday']['maxTradeCount']
+        self.config = config
         self.qty = self.get_buy_qty('NIFTY')
         self.maxLoss = self.qty * 22 #TODO: fetch it from db
         self.lastTradeTime = datetime.today().replace(hour=0, minute=0)
+        self.dhan_api = dhan_api
         self.margin = dhan_api.get_balance()
+        self.dhanHelper = dhanHelper
         # self.lastTradeTime = datetime.now()
 
         # self.scheduler = threading.Timer(60, self.periodic_check)
@@ -42,12 +46,12 @@ class RiskManagement:
         return qty
 
     def update(self):
-        self.tradeCount = dhanHelper.getTradeCount()
-        self.pnl = dhanHelper.getPnl() - (40 + self.qty * 25 / 75) * self.tradeCount # TODO: change the brokerage function, appromixated currently
+        self.tradeCount = self.dhanHelper.getTradeCount()
+        self.pnl = self.dhanHelper.getPnl() - (40 + self.qty * 25 / 75) * self.tradeCount # TODO: change the brokerage function, appromixated currently
 
         if(self.pnl > self.peakPnl):
             self.peakPnl = self.pnl
-        self.margin = dhan_api.get_balance()
+        self.margin = self.dhan_api.get_balance()
 
     def maxLossCrossed(self):
         self.update()
@@ -63,7 +67,7 @@ class RiskManagement:
         return False
 
     def get_buy_qty(self, index_name):
-        indexes = config.get('intraday', {}).get('indexes', [])
+        indexes = self.config.get('intraday', {}).get('indexes', [])
         for index in indexes:
             if index.get('name') == index_name:
                 qty = index.get('buyQty')
@@ -72,12 +76,13 @@ class RiskManagement:
         return 0
 
     def endSession(self, force=True):
+        self.update()
         logger.info(f"turning killswitch on with trades {self.tradeCount} and pnl {self.pnl}")
-        dhan_api.cancel_all_orders()
-        dhan_api.kill_switch('ON')
+        self.dhan_api.cancel_all_orders()
+        self.dhan_api.kill_switch('ON')
         if force:
-            dhan_api.kill_switch('OFF')
-            return dhan_api.kill_switch('ON')
+            self.dhan_api.kill_switch('OFF')
+            return self.dhan_api.kill_switch('ON')
 
     def killswitch(self):
         # return
@@ -142,7 +147,6 @@ class RiskManagement:
             self.scheduler2 = threading.Timer(1, self.wait_timer)
             self.scheduler2.start()
 
-riskManagementobj = RiskManagement()
 
 
 

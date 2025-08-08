@@ -22,6 +22,9 @@ RUN pip install -r requirements.txt
 
 
 COPY src /app/
+COPY entrypoint.sh /app/
+RUN chmod +x /app/entrypoint.sh
+
 # COPY src/config/service_account.json /root/.config/gspread/
 # RUN ls /app
 # RUN tree -L 2 /app/
@@ -29,7 +32,9 @@ COPY src /app/
 RUN #cat /etc/resolv.conf
 RUN echo "Asia/Kolkata" > /etc/timezone
 ENV TZ Asia/Kolkata
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+ENTRYPOINT ["/app/entrypoint.sh"]
+#CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 # CMD ["python", "new_widget.py"]
 # ENTRYPOINT ["python", "download_candlestick_data.py"]
 # ENTRYPOINT ["python", "-m", "scripts.run_all_components"]

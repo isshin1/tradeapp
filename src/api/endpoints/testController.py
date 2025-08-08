@@ -1,17 +1,18 @@
 from fastapi import APIRouter, BackgroundTasks
-from conf.config import dhan_api, logger
-from services.riskManagement import riskManagementobj
-from services.tradeManagement import on_order_update, updateOpenOrders, manageOptionSl, updateTargets, cancel_order_and_confirm
-from services.test_tradeManagement import  run_feed, run
-from services.postMarketAnalysis import trailTrades
-from services.orderManagement import modifyActiveOrder
+from conf.config import dhan_api, riskManagement
+from conf.logging_config import logger
+from conf.config import tradeManagement, tradeManager, orderManagement
+
+# from services.test_tradeManagement import  run_feed, run
+# from services.postMarketAnalysis import trailTrades
+
+from conf.config import orderManagement
 from pydantic import BaseModel
 from conf import websocketService
 import random
 from datetime import datetime
 from typing import List
 
-from models.TradeManager import tradeManager
 from models.partialTrade import PartialTrade
 router = APIRouter()
 from models.DecisionPoints import decisionPoints
@@ -23,7 +24,7 @@ async def pnl():
 
 @router.get("/api/test")
 async def brokerage():
-    riskManagementobj.lockScreen()
+    riskManagement.lockScreen()
     return 0
 
 
@@ -65,21 +66,21 @@ async def test_order_update():
     order_update = {'exchange': 'NSE', 'segment': 'D', 'source': 'P', 'securityId': '53847', 'clientId': '1103209581', 'exchOrderNo': '1600000085011333', 'orderNo': '102250326300826', 'product': 'I', 'txnType': 'S', 'orderType': 'LMT', 'validity': 'DAY', 'quantity': 75, 'tradedQty': 75, 'price': 133.5, 'tradedPrice': 133.55, 'avgTradedPrice': 133.55, 'offMktFlag': '0', 'orderDateTime': '2025-03-26 11:11:19', 'exchOrderTime': '2025-03-26 11:13:00', 'lastUpdatedTime': '2025-03-26 11:13:00', 'remarks': ' ', 'mktType': 'NL', 'reasonDescription': 'TRADE CONFIRMED', 'legNo': 1, 'instrument': 'OPTIDX', 'symbol': 'NIFTY-Mar2025-2', 'productName': 'INTRADAY', 'status': 'Traded', 'lotSize': 75, 'strikePrice': 23750, 'expiryDate': '2025-03-27', 'optType': 'PE', 'displayName': 'NIFTY 27 MAR 23750 PUT', 'isin': 'NA', 'series': 'XX', 'goodTillDaysDate': '2025-03-26', 'refLtp': 139, 'tickSize': 0.05, 'algoId': '0', 'multiplier': 1, 'correlationId': '1103209581-1742967679712'}
 
     order = {"Data" : order_update }
-    on_order_update(order)
+    tradeManagement.on_order_update(order)
 
     order_update = {'exchange': 'NSE', 'segment': 'D', 'source': 'P', 'securityId': '53847', 'clientId': '1103209581', 'exchOrderNo': '1600000085011333', 'orderNo': '102250326300827', 'product': 'I', 'txnType': 'S', 'orderType': 'LMT', 'validity': 'DAY', 'quantity': 75, 'tradedQty': 75, 'price': 133.5, 'tradedPrice': 133.55, 'avgTradedPrice': 133.55, 'offMktFlag': '0', 'orderDateTime': '2025-03-26 11:11:19', 'exchOrderTime': '2025-03-26 11:13:00', 'lastUpdatedTime': '2025-03-26 11:13:00', 'remarks': ' ', 'mktType': 'NL', 'reasonDescription': 'TRADE CONFIRMED', 'legNo': 1, 'instrument': 'OPTIDX', 'symbol': 'NIFTY-Mar2025-2', 'productName': 'INTRADAY', 'status': 'Traded', 'lotSize': 75, 'strikePrice': 23750, 'expiryDate': '2025-03-27', 'optType': 'PE', 'displayName': 'NIFTY 27 MAR 23750 PUT', 'isin': 'NA', 'series': 'XX', 'goodTillDaysDate': '2025-03-26', 'refLtp': 139, 'tickSize': 0.05, 'algoId': '0', 'multiplier': 1, 'correlationId': '1103209581-1742967679712'}
 
     order = {"Data" : order_update }
-    on_order_update(order)
+    tradeManagement.on_order_update(order)
 
 @router.get("/api/testFeed")
 async def test_order_update():
     # price 130 : target
-    manageOptionSl('50179', 125)
-    manageOptionSl('50179', 154)
-    manageOptionSl('50179', 140)
+    tradeManagement.manageOptionSl('50179', 125)
+    tradeManagement.manageOptionSl('50179', 154)
+    tradeManagement.manageOptionSl('50179', 140)
 
-    manageOptionSl('50179', 165)
+    tradeManagement.manageOptionSl('50179', 165)
 
 @router.get("/api/modifyOrder")
 async def modifyOrder():
@@ -120,11 +121,11 @@ async def getGreek(price:int, type:str):
 
 @router.get("/api/orderUpdate")
 async def getGreek():
-    updateOpenOrders()
+    tradeManagement.updateOpenOrders()
 
 @router.get("/api/sanityCheck")
 async def sanityCheck():
-    riskManagementobj.sanityCheck()
+    riskManagement.sanityCheck()
 
 @router.get("/api/getTsym/{token}")
 async def getTsym(token:int):
@@ -141,38 +142,38 @@ class TradeRequest(BaseModel):
         self.time = datetime.fromisoformat(self.time)
         self.expiry = datetime.fromisoformat(self.expiry)
 
-@router.post("/api/tradeCheck")
-async def tradeCheck( background_tasks: BackgroundTasks, trade: TradeRequest ):
-    trade.to_datetime()
-    # token = trade.token
+# @router.post("/api/tradeCheck")
+# async def tradeCheck( background_tasks: BackgroundTasks, trade: TradeRequest ):
+#     trade.to_datetime()
+#     # token = trade.token
+#
+#     time = trade.time
+#     expiry = trade.expiry
+#     dps = trade.dps
+#
+#     # tsym = 'NIFTY ' +  expiry.strftime('%d %b ').upper() + str(strike_price) +  ' ' +optionType
+#     tsym = trade.tsym
+#     # run_feed(time, expiry, tsym, dps)
+#     background_tasks.add_task(run_feed,  time, expiry , tsym, dps)
+#
+#     return {"message": "Trade started, not waiting for completion"}
+#     # run()
 
-    time = trade.time
-    expiry = trade.expiry
-    dps = trade.dps
-
-    # tsym = 'NIFTY ' +  expiry.strftime('%d %b ').upper() + str(strike_price) +  ' ' +optionType
-    tsym = trade.tsym
-    # run_feed(time, expiry, tsym, dps)
-    background_tasks.add_task(run_feed,  time, expiry , tsym, dps)
-
-    return {"message": "Trade started, not waiting for completion"}
-    # run()
-
-@router.post("/api/tradeCheckOld")
-async def tradeCheck( background_tasks: BackgroundTasks, trade: TradeRequest ):
-    trade.to_datetime()
-    # token = trade.token
-
-    time = trade.time
-    expiry = trade.expiry
-    dps = trade.dps
-
-    # tsym = 'NIFTY ' +  expiry.strftime('%d %b ').upper() + str(strike_price) +  ' ' +optionType
-    tsym = trade.tsym
-    run(time, expiry, tsym, dps)
+# @router.post("/api/tradeCheckOld")
+# async def tradeCheck( background_tasks: BackgroundTasks, trade: TradeRequest ):
+#     trade.to_datetime()
+#     # token = trade.token
+#
+#     time = trade.time
+#     expiry = trade.expiry
+#     dps = trade.dps
+#
+#     # tsym = 'NIFTY ' +  expiry.strftime('%d %b ').upper() + str(strike_price) +  ' ' +optionType
+#     tsym = trade.tsym
+#     run(time, expiry, tsym, dps)
     # background_tasks.add_task(run,  time, expiry , tsym, dps)
 
-    return {"message": "Trade started, not waiting for completion"}
+    # return {"message": "Trade started, not waiting for completion"}
 
 # @router.get("/api/tradeCheck")
 # async def tradeCheck( background_tasks: BackgroundTasks, trade: TradeRequest ):
@@ -193,19 +194,19 @@ async def tradeCheck( background_tasks: BackgroundTasks, trade: TradeRequest ):
 # @router.get("/api/setTargets")
 # async def setTargets():
 #     targets = {'t1':100, 't2':100, 't3':30}
-#     updateTargets(targets)
+#     tradeManagement.updateTargets(targets)
 #
 # @router.get("/api/modifySl")
 # async def setTargets():
-#     modifyActiveOrder(12, 123);
+#     orderManagement.modifyActiveOrder(12, 123);
 
 @router.post("/api/cancelTest/{orderNumber}")
 async def cancelTest(orderNumber:int):
-    cancel_order_and_confirm(orderNumber)
+    tradeManagement.cancel_order_and_confirm(orderNumber)
 
-@router.post("/api/trailTest/{days}")
-async def trailTest(days:int):
-    trailTrades(days)
+# @router.post("/api/trailTest/{days}")
+# async def trailTest(days:int):
+#     trailTrades(days)
 
 @router.get("/api/getBrokerage")
 async def getBrokerage():

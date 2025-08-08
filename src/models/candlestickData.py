@@ -1,5 +1,5 @@
 import pandas as pd
-from conf.config import logger
+from conf.logging_config import logger
 from collections import OrderedDict
 
 

@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from services.riskManagement import riskManagementobj
+from conf.config import riskManagement
 # from services.pihole import pihole
 router = APIRouter()
 
@@ -7,16 +7,16 @@ router = APIRouter()
 
 @router.get("/api/pnl")
 async def pnl():
-    return riskManagementobj.pnl
+    return riskManagement.pnl
 
 @router.get("/api/killswitch")
 async def killswitch():
-    return riskManagementobj.killswitch()
+    return riskManagement.endSession()
 
 
 @router.post("/api/endSession")
 async def endSession():
-    return riskManagementobj.endSession(force=False)
+    return riskManagement.endSession(force=False)
 #
 # @router.get("/api/enablePihole")
 # async def enablePihole():
