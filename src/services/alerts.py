@@ -27,8 +27,11 @@ class Alerts:
         self.data = data
         self.headers["X-Api-Key"] = API_KEY
     def send_message(self, body):
-        data['text'] = body
-        response = requests.post(url, json=self.data, headers=self.headers)
+        try:
+            data['text'] = body
+            response = requests.post(url, json=self.data, headers=self.headers)
+        except Exception as e:
+            print(f"Error sending message: {e}")
 
 
 

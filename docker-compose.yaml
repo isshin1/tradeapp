@@ -10,10 +10,10 @@ services:
     ports:
       - "8000:8000"
       - "127.0.0.1:53:53/udp"
-    restart: on-failure:3
-
+    restart: on-failure:2
+    networks:
+      - docker_network
 
 networks:
-  default:
-    external:
-      name: app-network
+  docker_network:
+    external: true

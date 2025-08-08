@@ -2,6 +2,7 @@ import yaml
 from datetime import datetime
 # from Dhan_Tradehull import Tradehull
 from Dependencies.Dhan_Tradehull.Dhan_Tradehull import Tradehull
+from api.endpoints.riskController import killswitch
 from utils.shoonyaApiHelper import ShoonyaApiPy
 import pyotp
 import logging
@@ -57,7 +58,8 @@ def checkTokenValidity(token):
     res = response.json()
     if 'errorType' in res:
         print("Token is invalid")
-        alert.send_message(res['errorMessage'])
+        killswitch()
+        # alert.send_message(res['errorMessage'])
         exit(1)
     print(response.status_code)
     print(response.json())  # or response.text if not JSON
