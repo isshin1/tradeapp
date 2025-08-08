@@ -8,6 +8,11 @@ import os
 # PIHOLE_API_URL = "http://pihole/api"
 # PIHOLE_AUTH_URL = "http://pihole/api/auth"
 
+if os.path.exists('/.dockerenv'):
+    url = "http://waha:3000/api/sendText"
+else:
+    url = "http://localhost:3000/api/sendText"
+
 
 url = "http://localhost:3000/api/sendText"
 headers = {
