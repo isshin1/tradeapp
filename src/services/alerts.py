@@ -14,7 +14,7 @@ else:
     url = "http://localhost:3000/api/sendText"
 
 
-url = "http://localhost:3000/api/sendText"
+# url = "http://localhost:3000/api/sendText"
 headers = {
     "Content-Type": "application/json",
 }
