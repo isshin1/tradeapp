@@ -34,7 +34,7 @@ async def update_targets(target_data: TargetRequest):
         raise HTTPException(status_code=500, detail=f"Error updating targets: {str(e)}")
 
 
-@router.post("/api/orderManagement.buyOrder/{token}/{priceType}/{price}/{bof}")
+@router.post("/api/buyOrder/{token}/{priceType}/{price}/{bof}")
 async def buy_order(token: str, priceType: str, price: float, bof: bool):
     try:
         orderManagement.buyOrder(tradeManagement.ltps, token, priceType, price, bof)
@@ -45,7 +45,7 @@ async def buy_order(token: str, priceType: str, price: float, bof: bool):
         # Raise an HTTPException if there's an error in processing the order
         return HTTPException(status_code=500, detail=str(e))
 
-@router.post("/api/orderManagement.cancelOrder/{orderId}")
+@router.post("/api/cancelOrder/{orderId}")
 async def buy_order(orderId: int):
     return orderManagement.cancelOrder(orderId)
     # return dhan_api.cancel_order(orderId)
