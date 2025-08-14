@@ -1,3 +1,5 @@
+import time
+
 from fastapi import APIRouter, BackgroundTasks
 from conf.config import dhan_api, riskManagement
 from conf.logging_config import logger
@@ -104,6 +106,14 @@ async def getGreek():
     epoch = int(datetime.now().timestamp())
     websocketService.send_price_feed("45467", epoch, 100 * random.random())
     websocketService.send_price_feed("45475", epoch, 100 * random.random())
+
+@router.get("/api/sampleFirstFetch")
+async def getGreek():
+    epoch = int(datetime.now().timestamp())
+    websocketService.update_atm_options(44470, 'NIFTY 14 AUG 24400 CALL', 44491, 'NIFTY 14 AUG 24550 PUT')
+    # while True:
+    #     websocketService.update_atm_options(44470, 'NIFTY 14 AUG 24450 CALL', 44491, 'NIFTY 14 AUG 24550 PUT' )
+    #     time.sleep(1)
 
 
 @router.get("/api/toast")

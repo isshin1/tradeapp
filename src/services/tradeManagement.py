@@ -23,7 +23,6 @@ import threading
 
 class TradeManagement:
     def __init__(self, config, dhan_api, shoonya_api,  tradeManager, nifty_fut_token, riskManagementobj, dhanHelper ):
-        self.ltps = {}
         self.function_lock = threading.Lock()
         self.config = config
         self.tradeManager = tradeManager

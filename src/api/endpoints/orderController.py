@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from conf.config import orderManagement, shoonyaWebsocket, tradeManagement
+from conf.config import orderManagement,  tradeManagement
 from pydantic import BaseModel
 from conf.config import logger
 router = APIRouter()
@@ -37,7 +37,7 @@ async def update_targets(target_data: TargetRequest):
 @router.post("/api/buyOrder/{token}/{priceType}/{price}/{bof}")
 async def buy_order(token: str, priceType: str, price: float, bof: bool):
     try:
-        orderManagement.buyOrder(tradeManagement.ltps, token, priceType, price, bof)
+        orderManagement.buyOrder( token, priceType, price, bof)
         # You can process 'res' if needed; here we simply return a success message.
         return {"message": "order placed"}
     except Exception as e:

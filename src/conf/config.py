@@ -115,7 +115,7 @@ try:
     dhanwebsocket = DhanWebsocket(client_id, access_token, tradeManagement )
     dhanwebsocket.start_dhan_websocket()
 
-    shoonyaWebsocket = ShoonyaWebsocket(config, tradeManagement, shoonya_api, nifty_fut_token, dhan_api, feed_folder, optionUpdate )
+    shoonyaWebsocket = ShoonyaWebsocket(config, tradeManagement, tradeManager, shoonya_api, nifty_fut_token, dhan_api, feed_folder, optionUpdate )
     shoonyaWebsocket.start_shoonya_websocket()
 
     checkTokenValidity(access_token)

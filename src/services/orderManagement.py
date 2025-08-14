@@ -18,7 +18,7 @@ class OrderManagement:
         self.riskManagementobj = riskManagementobj
         self.tradeManager = tradeManager
 
-    def buyOrder(self, ltps, token, order_type, price, bof):
+    def buyOrder(self, token, order_type, price, bof):
 
         try:
 
@@ -60,7 +60,7 @@ class OrderManagement:
 
 
             if order_type == "LIMIT":
-                fut_ltp = ltps[self.nifty_fut_token]
+                fut_ltp = self.tradeManager.ltps[self.nifty_fut_token]
                 if not decisionPoints.checkTradeValidity(fut_ltp, optionType):
                     websocketService.send_toast("Wrong trade", "Price not near any DP")
                     logger.info(f"Wrong trade, Price not near any DP or DP already traded")

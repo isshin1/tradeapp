@@ -14,13 +14,14 @@ import csv
 # from services.charts import chart
 # update nifty spot price in consul via feed
 class ShoonyaWebsocket:
-    def __init__(self, config, tradeManagement, shoonya_api, nifty_fut_token, dhan_api, feed_folder, optionUpdateObj ):
+    def __init__(self, config, tradeManagement, tradeManager, shoonya_api, nifty_fut_token, dhan_api, feed_folder, optionUpdateObj ):
         self.config = config
         self.feed_opened = False
         self.socket_opened = False
         self.feedJson={}
         self.current_chart_token = 0
         self.tradeManagement = tradeManagement
+        self.tradeManager = tradeManager
         self.shoonya_api = shoonya_api
         self.nifty_fut_token = nifty_fut_token
         self.dhan_api = dhan_api
@@ -85,7 +86,7 @@ class ShoonyaWebsocket:
             if UPDATE:
                     if 'ltp' in feed_data:
                         try:
-                            self.tradeManagement.ltps[token] = float(feed_data['ltp'])
+                            self.tradeManager.ltps[token] = float(feed_data['ltp'])
                             # manageOptionSl(token, float(feedJson[token]['ltp']))
                             with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
                                 futures = []
@@ -133,8 +134,8 @@ class ShoonyaWebsocket:
 
     def optionUpdate(self):
         while(True):
-            if '26000' in self.tradeManagement.ltps:
-                self.optionUpdateObj.updateOptions(int(self.tradeManagement.ltps['26000']))
+            if '26000' in self.tradeManager.ltps:
+                self.optionUpdateObj.updateOptions(int(self.tradeManager.ltps['26000']))
             time.sleep(60)
 
     def start_shoonya_websocket(self):
