@@ -368,6 +368,7 @@ class TradeManagement:
             )
             self.tradeManager.addTrade(token, trade1)
             logger.info(f"trade1 added with qty {qty1}")
+            logger.info(f"{trade1}")
 
             if qty2 > 0:
                 trade2 = PartialTrade(
@@ -378,6 +379,7 @@ class TradeManagement:
 
                 self.tradeManager.addTrade(token, trade2)
                 logger.info(f"trade2 added with qty {qty2}")
+                logger.info(f"{trade2}")
 
             self.shoonya_api.subscribe("NFO|" + str(token))
 
