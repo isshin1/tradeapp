@@ -69,7 +69,12 @@ class TradeManagement:
             logger.info(trade.__str__())
 
         else:
-            logger.info(f"error in placing sl order {res['remarks']} ")
+            logger.error(
+                "Placing order: security_id={}, exchange_segment={}, transaction_type={}, quantity={}, order_type={}, product_type={}, price={}, trigger_price={}",
+                                trade.getToken(), "NSE_FNO", "SELL" ,trade.getQty(), "STOP_LOSS", trade.getPrd(),
+                                trade.getSlPrice() - trade.getDiff(), trade.getSlPrice()
+            );
+            logger.error(f"error in placing sl order {res['remarks']} ")
 
         self.tradeManager.updatePartialTrade(trade)
         # logger.info(f"placed sl for a fresh order for {trade.name} with order /number {orderNumber}")
