@@ -10,9 +10,10 @@ from datetime import date
 from utils.databaseHelper import db_helper
 from sqlalchemy.orm import Session
 from conf.config import *
+from conf.config import dhan_api
 from conf.logging_config import logger
-from typing import Dict
-
+from datetime import datetime, timedelta, timezone
+from typing import List, Dict, Any
 router = APIRouter()
 
 @router.post("/api/firstFetch")
@@ -62,6 +63,53 @@ def create_or_update_plan(plan: PlanSchema, db: Session = Depends(db_helper.get_
 
 
 
+
+@router.get("/api/fetchHistoricalData/{tsym}")
+def fetch_historical_data(tsym: str) -> List[Dict[str, Any]]:
+    # Get the token for the given symbol
+    print(f"Fetching historical data for symbol {tsym}")
+    token = dhan_api.get_token(tsym)
+
+    # Calculate the start time (1 week ago, beginning of day)
+    starttime = int(
+        (datetime.now(timezone.utc) - timedelta(weeks=1))
+        .replace(hour=0, minute=0, second=0, microsecond=0)
+        .timestamp()
+    )
+
+    # Get the time price series data
+    res = shoonya_api. get_time_price_series("NFO", str(token), str(starttime), None, "3")
+
+    # Convert result to list of dicts (reversed, like in Java)
+    data_list: List[Dict[str, Any]] = []
+    for obj in reversed(res):
+        data_map = {
+            "into": obj.get("into"),
+            "stat": obj.get("stat"),
+            "ssboe": obj.get("ssboe"),
+            "intvwap": obj.get("intvwap"),
+            "intoi": obj.get("intoi"),
+            "intc": obj.get("intc"),
+            "intv": obj.get("intv"),
+            "v": obj.get("v"),
+            "inth": obj.get("inth"),
+            "oi": obj.get("oi"),
+            "time": obj.get("time"),
+            "intl": obj.get("intl"),
+        }
+        data_list.append(data_map)
+    data_list.sort(key=lambda x: x['time'])
+
+    seen_ssboe = set()
+    filtered_data_list = []
+
+    for entry in data_list:
+        ssboe_value = entry.get("ssboe")
+        if ssboe_value not in seen_ssboe:
+            filtered_data_list.append(entry)
+            seen_ssboe.add(ssboe_value)
+
+    return filtered_data_list
 
 
 

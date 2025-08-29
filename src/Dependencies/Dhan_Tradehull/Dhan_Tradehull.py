@@ -214,11 +214,11 @@ class Tradehull:
 	def get_token(self, tsym:str):
 		instrument_df = self.instrument_df.copy()
 
-		security_check = instrument_df[((instrument_df['SEM_SMST_SECURITY_ID'] == tsym) )]
+		security_check = instrument_df[((instrument_df['SEM_CUSTOM_SYMBOL'] == tsym) )]
 		if security_check.empty:
-			raise Exception("Check the token")
-		security_tsym = security_check.iloc[-1]['SEM_CUSTOM_SYMBOL']
-		return security_tsym
+			raise Exception("Check the tsym")
+		security_token = security_check.iloc[-1]['SEM_SMST_SECURITY_ID']
+		return security_token
 
 	def order_placement(self,tradingsymbol:str, exchange:str,quantity:int, price:int, trigger_price:int, order_type:str, transaction_type:str, trade_type:str,disclosed_quantity=0,after_market_order=False,validity ='DAY', amo_time='OPEN',bo_profit_value=None, bo_stop_loss_Value=None)->str:
 		try:
