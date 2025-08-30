@@ -82,6 +82,8 @@ def fetch_historical_data(tsym: str) -> List[Dict[str, Any]]:
 
     # Convert result to list of dicts (reversed, like in Java)
     data_list: List[Dict[str, Any]] = []
+    if res ==  None:
+        return []
     for obj in reversed(res):
         data_map = {
             "into": obj.get("into"),
