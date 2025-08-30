@@ -1,12 +1,12 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect,  Depends, HTTPException, Security
 from contextlib import asynccontextmanager
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 # # from services.riskManagement import riskManagementobj
 # from conf.dhanWebsocket import start_dhan_websocket
 from conf.config import *
 from conf.logging_config import logger
 from api.endpoints import riskController , testController, orderController, pollingController, tradeController
-
 from fastapi.middleware.cors import CORSMiddleware
 
 import uvicorn
@@ -23,13 +23,13 @@ app.include_router(pollingController.router)
 
 app.include_router(tradeController.router)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
-    allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
-)
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],  # Allows all origins
+#     allow_credentials=True,
+#     allow_methods=["*"],  # Allows all methods
+#     allow_headers=["*"],  # Allows all headers
+# )
 
 # Define the startup function
 async def startup_function():

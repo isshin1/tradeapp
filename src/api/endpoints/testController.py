@@ -1,6 +1,6 @@
 import time
 
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends
 from conf.config import dhan_api, riskManagement
 from conf.logging_config import logger
 from conf.config import tradeManagement, tradeManager, orderManagement
@@ -18,14 +18,15 @@ from typing import List
 from models.partialTrade import PartialTrade
 router = APIRouter()
 from models.DecisionPoints import decisionPoints
+from core.auth import role_checker  # import role_checker from main.py
 
 @router.get("/api/placeOrder")
-async def pnl():
+async def pnl(check_roles: None = Depends(role_checker(["ROLE_ADMIN"]))):
     return dhan_api.order_placement(tradingsymbol="NIFTY 13 MAR 22150 PUT", exchange="NFO", quantity=150, price=0, trigger_price=0, order_type="MARKET", transaction_type="BUY",trade_type="MIS",  )
 
 
 @router.get("/api/test")
-async def brokerage():
+async def brokerage(check_roles: None = Depends(role_checker(["ROLE_ADMIN"]))):
     riskManagement.lockScreen()
     return 0
 
@@ -40,7 +41,7 @@ async def quote():
     return QuoteResponse(quote="just fucking follow the rules")
 
 @router.get("/api/testTrade")
-async def test_order_update():
+async def test_order_update(check_roles: None = Depends(role_checker(["ROLE_ADMIN"]))):
     trade1 = PartialTrade(
         name="trade1", status=0, qty=75, entryPrice=138.5, slPrice=133.5, maxSlPrice=129.5,
         targetPoints=15, orderType="STOP_LOSS", prd="INTRADAY", exch="NSE_NFO", tsym="NIFTY 27 MAR 23750 PUT",
@@ -64,7 +65,7 @@ async def test_order_update():
 
 
 @router.get("/api/testOrder")
-async def test_order_update():
+async def test_order_update(check_roles: None = Depends(role_checker(["ROLE_ADMIN"]))):
     order_update = {'exchange': 'NSE', 'segment': 'D', 'source': 'P', 'securityId': '53847', 'clientId': '1103209581', 'exchOrderNo': '1600000085011333', 'orderNo': '102250326300826', 'product': 'I', 'txnType': 'S', 'orderType': 'LMT', 'validity': 'DAY', 'quantity': 75, 'tradedQty': 75, 'price': 133.5, 'tradedPrice': 133.55, 'avgTradedPrice': 133.55, 'offMktFlag': '0', 'orderDateTime': '2025-03-26 11:11:19', 'exchOrderTime': '2025-03-26 11:13:00', 'lastUpdatedTime': '2025-03-26 11:13:00', 'remarks': ' ', 'mktType': 'NL', 'reasonDescription': 'TRADE CONFIRMED', 'legNo': 1, 'instrument': 'OPTIDX', 'symbol': 'NIFTY-Mar2025-2', 'productName': 'INTRADAY', 'status': 'Traded', 'lotSize': 75, 'strikePrice': 23750, 'expiryDate': '2025-03-27', 'optType': 'PE', 'displayName': 'NIFTY 27 MAR 23750 PUT', 'isin': 'NA', 'series': 'XX', 'goodTillDaysDate': '2025-03-26', 'refLtp': 139, 'tickSize': 0.05, 'algoId': '0', 'multiplier': 1, 'correlationId': '1103209581-1742967679712'}
 
     order = {"Data" : order_update }
@@ -76,7 +77,7 @@ async def test_order_update():
     tradeManagement.on_order_update(order)
 
 @router.get("/api/testFeed")
-async def test_order_update():
+async def test_order_update(check_roles: None = Depends(role_checker(["ROLE_ADMIN"]))):
     # price 130 : target
     tradeManagement.manageOptionSl('50179', 125)
     tradeManagement.manageOptionSl('50179', 154)
@@ -85,7 +86,7 @@ async def test_order_update():
     tradeManagement.manageOptionSl('50179', 165)
 
 @router.get("/api/modifyOrder")
-async def modifyOrder():
+async def modifyOrder(check_roles: None = Depends(role_checker(["ROLE_ADMIN"]))):
     # ret = dhan_api.Dhan.modify_order(order_id="12250307294127", order_type="LIMIT", quantity=75,
     #                                  price=101)
     ret = dhan_api.Dhan.modify_order( order_id=22250307395227, order_type="LIMIT", leg_name="ENTRY_LEG",  quantity=75,
@@ -122,20 +123,20 @@ async def getGreek():
     websocketService.send_toast("hello", "world")
 
 @router.post("/api/addDp/{price}/{name}")
-async def getGreek(price:int, name:str):
+async def getGreek(price:int, name:str, check_roles: None = Depends(role_checker(["ROLE_ADMIN"]))):
     decisionPoints.addDecisionPoint(price, name)
 
 @router.post("/api/testDp/{price}/{type}")
-async def getGreek(price:int, type:str):
+async def getGreek(price:int, type:str, check_roles: None = Depends(role_checker(["ROLE_ADMIN"]))):
     decisionPoints.updateDecisionPoints(price, type)
 
 
 @router.get("/api/orderUpdate")
-async def getGreek():
+async def getGreek(check_roles: None = Depends(role_checker(["ROLE_ADMIN"]))):
     tradeManagement.updateOpenOrders()
 
 @router.get("/api/sanityCheck")
-async def sanityCheck():
+async def sanityCheck(check_roles: None = Depends(role_checker(["ROLE_ADMIN"]))):
     riskManagement.sanityCheck()
 
 @router.get("/api/getTsym/{token}")

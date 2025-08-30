@@ -14,6 +14,7 @@ from conf.config import dhan_api
 from conf.logging_config import logger
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any
+from core.auth import role_checker  # import role_checker from main.py
 router = APIRouter()
 
 @router.post("/api/firstFetch")
@@ -22,7 +23,7 @@ async def firstFetch():
     tradeManagement.updateOpenOrders()
 
 @router.get("/api/margin")
-async def getMargin():
+async def getMargin(check_roles: None = Depends(role_checker(["ROLE_ADMIN"]))):
     return dhan_api.get_balance()
 
 
@@ -31,11 +32,11 @@ async def getDps():
     return decisionPoints.get_decision_points()
 
 @router.delete("/api/deleteDp/{name}/{price}")
-async def deleteDp(name:str, price:int):
+async def deleteDp(name:str, price:int, check_roles: None = Depends(role_checker(["ROLE_ADMIN"]))):
     return decisionPoints.deleteDp(name, price)
 
 @router.put("/api/updateDp/{price}/{new_price}")
-async def updateDp(price:int, new_price:int):
+async def updateDp(price:int, new_price:int, check_roles: None = Depends(role_checker(["ROLE_ADMIN"]))):
     return decisionPoints.updateDp(price, new_price)
 
 
@@ -53,7 +54,7 @@ def get_plan(date: date, db: Session = Depends(db_helper.get_db)) -> Dict[str, s
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/api/tradePlan", response_model=PlanSchema)
-def create_or_update_plan(plan: PlanSchema, db: Session = Depends(db_helper.get_db)):
+def create_or_update_plan(plan: PlanSchema, db: Session = Depends(db_helper.get_db), check_roles: None = Depends(role_checker(["ROLE_ADMIN"]))):
     try:
         db_plan = db_helper.add_or_update_plan(db, plan)
         return db_plan

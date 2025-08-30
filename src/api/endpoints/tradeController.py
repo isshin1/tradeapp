@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 # from services.tradeManagement import refreshTrade
 from conf.config import tradeManagement
 from conf.logging_config import logger
 from pydantic import BaseModel
+from core.auth import role_checker  # import role_checker from main.py
 
 router = APIRouter()
 
@@ -14,14 +15,14 @@ class TargetRequest(BaseModel):
 
 
 @router.post("/api/refreshTrade")
-async def update_targets():
+async def update_targets(check_roles: None = Depends(role_checker(["ROLE_ADMIN"]))):
     try:
         tradeManagement.refreshTrade()
     except Exception as e:
         logger.error(f'got exception in refreshTrade {e}')
 
 @router.post("/api/updateTargets")
-async def update_targets(target_data: TargetRequest):
+async def update_targets(target_data: TargetRequest, check_roles: None = Depends(role_checker(["ROLE_ADMIN"]))):
     try:
         # Extract target values from the request
         t1 = target_data.t1

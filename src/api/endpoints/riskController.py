@@ -1,21 +1,22 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from conf.config import riskManagement
+from core.auth import role_checker  # import role_checker from main.py
 # from services.pihole import pihole
 router = APIRouter()
 
 
 
 @router.get("/api/pnl")
-async def pnl():
+async def pnl(check_roles: None = Depends(role_checker(["ROLE_ADMIN"]))):
     return riskManagement.pnl
 
 @router.get("/api/killswitch")
-async def killswitch():
+async def killswitch(check_roles: None = Depends(role_checker(["ROLE_ADMIN"]))):
     return riskManagement.endSession()
 
 
 @router.post("/api/endSession")
-async def endSession():
+async def endSession(check_roles: None = Depends(role_checker(["ROLE_ADMIN"]))):
     return riskManagement.endSession(force=False)
 #
 # @router.get("/api/enablePihole")
