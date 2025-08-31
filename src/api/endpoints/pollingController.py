@@ -5,9 +5,9 @@ from conf.config import dhan_api
 from conf.config import optionUpdate,  tradeManagement
 from pydantic import BaseModel
 from schemas.planSchema import PlanSchema
-from models.DecisionPoints import decisionPoints
+from conf.config import decisionPoints
 from datetime import date
-from utils.databaseHelper import db_helper
+from conf.config import db_helper
 from sqlalchemy.orm import Session
 from conf.config import *
 from conf.config import dhan_api

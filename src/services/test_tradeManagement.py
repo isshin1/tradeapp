@@ -1,18 +1,18 @@
 # from Dhan_Tradehull import Tradehull
 from datetime import datetime, timedelta
 
-from conf.config import dhan_api, shoonya_api, logger, nifty_fut_token, riskManagementobj,
+from conf.config import dhan_api, shoonya_api, logger, nifty_fut_token, riskManagement
 from conf.websocketService import update_order_feed, send_toast
 from models.partialTrade import PartialTrade
-from models.DecisionPoints import decisionPoints
+from conf.config import decisionPoints
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict
 
-from services.riskManagement import riskManagementobj
-from utils.dhanHelper import getProductType
+from conf.config import riskManagement
+# from utils.dhanHelper import getProductType
 # from conf import websocketService
 import concurrent.futures
-from models.TradeManager import tradeManager
+from conf.config import tradeManager
 import pandas as pd
 from random import randint
 from models.candlestickData import candlestickData

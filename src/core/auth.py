@@ -2,7 +2,7 @@ from fastapi import Header, FastAPI, WebSocket, WebSocketDisconnect,  Depends, H
 from contextlib import asynccontextmanager
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
-from conf.config import SECRET_KEY
+# from conf.config import SECRET_KEY
 from typing import Optional, List
 security = HTTPBearer()
 #

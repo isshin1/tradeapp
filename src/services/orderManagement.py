@@ -4,13 +4,13 @@ from conf.logging_config import logger
 from models.partialTrade import PartialTrade
 # from services.riskManagement import riskManagementobj
 from conf import websocketService
-from models.DecisionPoints import decisionPoints
 # from conf.shoonyaWebsocket import ltps
-# from models.TradeManager import tradeManager
+# from models.TradeManager import tradeManager2
 from datetime import datetime
 
 class OrderManagement:
-    def __init__(self,  dhan_api, shoonya_api , order_folder, nifty_fut_token, riskManagementobj,   tradeManager):
+    def __init__(self,  dhan_api, shoonya_api , order_folder, nifty_fut_token, riskManagementobj, tradeManager, decisionPoints):
+        self.decisionPoints = decisionPoints
         self.dhan_api = dhan_api
         self.shoonya_api = shoonya_api
         self.order_folder = order_folder
@@ -61,7 +61,7 @@ class OrderManagement:
 
             if order_type == "LIMIT":
                 fut_ltp = self.tradeManager.ltps[self.nifty_fut_token]
-                if not decisionPoints.checkTradeValidity(fut_ltp, optionType):
+                if not self.decisionPoints.checkTradeValidity(fut_ltp, optionType):
                     websocketService.send_toast("Wrong trade", "Price not near any DP")
                     logger.info(f"Wrong trade, Price not near any DP or DP already traded")
                     return

@@ -14,7 +14,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # from conf.config import dhanHelper
 # from conf import websocketService
 import concurrent.futures
-from models.DecisionPoints import decisionPoints
 # from models.TradeManager import tradeManager
 from models.candlestickData import candlestickData
 import time
@@ -22,7 +21,7 @@ import pandas as pd
 import threading
 
 class TradeManagement:
-    def __init__(self, config, dhan_api, shoonya_api,  tradeManager, nifty_fut_token, riskManagementobj, dhanHelper ):
+    def __init__(self, config, dhan_api, shoonya_api,  tradeManager, nifty_fut_token, riskManagementobj, dhanHelper, decisionPoints ):
         self.function_lock = threading.Lock()
         self.config = config
         self.tradeManager = tradeManager
@@ -31,6 +30,8 @@ class TradeManagement:
         self.nifty_fut_token = nifty_fut_token
         self.riskManagementobj = riskManagementobj
         self.dhanHelper = dhanHelper
+        self.decisionPoints = decisionPoints
+        
     #
     # def setLtps(self, ltps):
     #     self.tradeManager.ltps = ltps
@@ -240,7 +241,7 @@ class TradeManagement:
                     logger.info(f"trail check for DP cross")
                     df = candlestickData.getTokenDf(trade.token)
                     fut_latest_price = candlestickData.getLatestPrice(self.nifty_fut_token)
-                    new_sl_time, dp_price = candlestickData.getCrossedDp(fut_latest_price, self.nifty_fut_token, decisionPoints.decisionPoints, trade)
+                    new_sl_time, dp_price = candlestickData.getCrossedDp(fut_latest_price, self.nifty_fut_token, self.decisionPoints.self.decisionPoints, trade)
                     if new_sl_time != None and new_sl_time in df['time'].values:
                         # new_sl = df.loc[new_sl_time, 'low'] # low of last candle which crossed dp
                         new_sl = df[df['time'] == new_sl_time]['low'].values[0]
@@ -385,7 +386,7 @@ class TradeManagement:
 
             # trade = tradeManager.trade
             # trade.targetQtys = [qty1, qty2]
-            # trade.targetPrices = decisionPoints.getTargetPrices(future_ltp, tradeManager.trade )
+            # trade.targetPrices = self.decisionPoints.getTargetPrices(future_ltp, tradeManager.trade )
             # trade.slPrice = slPrice
             # trade.maxSlPrice = maxSlPrice
             # trade.prd = prd
@@ -410,7 +411,7 @@ class TradeManagement:
             if not self.tradeManager.isTradeActive(token):
                 logger.info(f"starting a fresh trade at {datetime.now()} of token {token}");
                 self.createTrade(token, order_update)
-                decisionPoints.updateDecisionPoints(self.tradeManager.ltps[self.nifty_fut_token], order_update['optType'])
+                self.decisionPoints.updateself.decisionPoints(self.tradeManager.ltps[self.nifty_fut_token], order_update['optType'])
         except Exception as e:
             logger.error(f"Error in handling buy order {e}")
         #

@@ -17,7 +17,7 @@ from typing import List
 
 from models.partialTrade import PartialTrade
 router = APIRouter()
-from models.DecisionPoints import decisionPoints
+from conf.config import  decisionPoints
 from core.auth import role_checker  # import role_checker from main.py
 
 @router.get("/api/placeOrder")

@@ -4,8 +4,10 @@ from datetime import datetime
 from Dependencies.Dhan_Tradehull.Dhan_Tradehull import Tradehull
 from conf.dhanWebsocket import DhanWebsocket
 from conf.shoonyaWebsocket import ShoonyaWebsocket
+from models.DecisionPoints import DecisionPoints
 from services.orderManagement import OrderManagement
 from services.pihole import Pihole
+from utils.databaseHelper import DBHelper
 from utils.dhanHelper import DhanHelper
 from utils.shoonyaApiHelper import ShoonyaApiPy
 import pyotp
@@ -74,6 +76,9 @@ def checkTokenValidity(token):
     logger.info(response.json())  # or response.text if not JSON
 
 
+DATABASE_URL = config['database']['url']
+db_helper = DBHelper(DATABASE_URL)
+decisionPoints = DecisionPoints(db_helper)
 
 
 nifty_fut_token = 0
@@ -109,7 +114,7 @@ try:
     riskManagement = RiskManagement(config, dhan_api, dhanHelper)
     tradeManager = TradeManager()
 
-    tradeManagement =  TradeManagement(config, dhan_api, shoonya_api, tradeManager, nifty_fut_token, riskManagement, dhanHelper)
+    tradeManagement =  TradeManagement(config, dhan_api, shoonya_api, tradeManager, nifty_fut_token, riskManagement, dhanHelper, decisionPoints)
     optionUpdate = OptionUpdate(config, dhan_api, shoonya_api,  misc, tradeManagement, tradeManager)
 
     dhanwebsocket = DhanWebsocket(client_id, access_token, tradeManagement )
@@ -120,7 +125,7 @@ try:
 
     checkTokenValidity(access_token)
 
-    orderManagement = OrderManagement(dhan_api, shoonya_api , order_folder, nifty_fut_token, riskManagement,   tradeManager)
+    orderManagement = OrderManagement(dhan_api, shoonya_api , order_folder, nifty_fut_token, riskManagement, tradeManager, decisionPoints)
     # pihole = Pihole()
     # pihole.disablePihole()  # disable blocking on startup
 
