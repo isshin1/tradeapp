@@ -411,7 +411,7 @@ class TradeManagement:
             if not self.tradeManager.isTradeActive(token):
                 logger.info(f"starting a fresh trade at {datetime.now()} of token {token}");
                 self.createTrade(token, order_update)
-                self.decisionPoints.updateself.decisionPoints(self.tradeManager.ltps[self.nifty_fut_token], order_update['optType'])
+                self.decisionPoints.updateDecisionPoints(self.tradeManager.ltps[self.nifty_fut_token], order_update['optType'])
         except Exception as e:
             logger.error(f"Error in handling buy order {e}")
         #

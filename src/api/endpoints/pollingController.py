@@ -101,7 +101,7 @@ def fetch_historical_data(tsym: str) -> List[Dict[str, Any]]:
             "intl": obj.get("intl"),
         }
         data_list.append(data_map)
-    data_list.sort(key=lambda x: x['time'])
+    data_list.sort(key=lambda x: x['ssboe'])
 
     seen_ssboe = set()
     filtered_data_list = []
