@@ -15,8 +15,8 @@ class RiskManagement:
         self.tradeCount = 0
         self.maxTradeCount = config['intraday']['maxTradeCount']
         self.config = config
-        self.qty = self.get_buy_qty('NIFTY')
-        self.maxLoss = self.qty * 22 #TODO: fetch it from db
+        # self.qty = self.get_buy_qty('NIFTY')
+        self.maxLoss = config['intraday']['maxLoss']
         self.lastTradeTime = datetime.today().replace(hour=0, minute=0)
         self.dhan_api = dhan_api
         self.margin = dhan_api.get_balance()
@@ -47,7 +47,8 @@ class RiskManagement:
 
     def update(self):
         self.tradeCount = self.dhanHelper.getTradeCount()
-        self.pnl = self.dhanHelper.getPnl() - (40 + self.qty * 25 / 75) * self.tradeCount # TODO: change the brokerage function, appromixated currently
+        # self.pnl = self.dhanHelper.getPnl() - (40 + self.qty * 25 / 75) * self.tradeCount # TODO: change the brokerage function, appromixated currently
+        self.pnl = self.dhanHelper.getPnl()
 
         if(self.pnl > self.peakPnl):
             self.peakPnl = self.pnl
@@ -61,7 +62,7 @@ class RiskManagement:
         if self.tradeCount >= self.maxTradeCount:
             logger.info("max trades crossed")
             return True
-        if self.pnl - self.getQty(0) * 10 <= -1 * self.maxLoss :
+        if self.pnl  <= -1 * self.maxLoss :
             logger.info("next trade will cross maxloss, auto exiting ")
             return True
         return False

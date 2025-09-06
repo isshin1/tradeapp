@@ -20,7 +20,7 @@ pd.set_option('mode.chained_assignment', None)
 current_date = time.strftime("%Y-%m-%d")
 
 class Misc:
-    def __init__(self, BASE_DIR):
+    def __init__(self, BASE_DIR, config):
         self.BASE_DIR = BASE_DIR
         self.nfo_file =  BASE_DIR + '/Dependencies/' + 'NFO_' + str(current_date) + '.csv'
         self.bfo_file =  BASE_DIR + '/Dependencies/' + 'BFO_' + str(current_date) + '.csv'
@@ -32,6 +32,7 @@ class Misc:
                           {"link":"https://api.shoonya.com/NSE_symbols.txt.zip", "name": "NSE_symbols.txt", "newName":self.nse_file},
                           {"link":"https://api.shoonya.com/BSE_symbols.txt.zip", "name": "BSE_symbols.txt", "newName":self.bse_file}]
         self.get_instrument_files()
+        self.config = config
         # self.getFutDf()  #TODO: error on start of a new month, file not there
 
     def getFutDf(self):
@@ -85,11 +86,11 @@ class Misc:
         else:
             print("Failed to download the zip file.")
 
-    def restart_container( self, config):
+    def restart_container( self):
         bashCommandName = 'cat /tmp/container'
         container_id = subprocess.check_output(['bash', '-c', bashCommandName])
         print('restarting container with id ', container_id.decode("utf-8"))
-        self.sendNotif(config, "encountered error", f"restarting container {container_id}")
+        self.sendNotif(self.config, "encountered error", f"restarting container {container_id}")
         container_id = container_id.decode("utf-8")
         client = docker.from_env()
         container = client.containers.get(container_id)
@@ -376,10 +377,10 @@ class Misc:
         return c.callDelta
 
 
-    def sendNotif(self, config, title, body=None):
+    def sendNotif(self,  title, body=None):
         if body is None:
             body = ''
-        webhook_url = config['discord']['webhook_url']
+        webhook_url = self.config['discord']['webhook_url']
         headers = {'content-type': 'application/json'}
         data = {"content": title + '\n' + body}
         r = requests.post(webhook_url, json=data, headers=headers)
@@ -389,6 +390,50 @@ class Misc:
         container_id = socket.gethostname()
         container = client.containers.get(container_id)
         container.stop()
+
+    def get_sl_and_max_sl_price(self, instrument, tsym):
+        INDEX = tsym.split(' ')[0]
+
+        # Find the specific index configuration
+        index_config = None
+        for index in self.config['intraday']['indexes']:
+            if index['name'] == INDEX:
+                index_config = index
+                break
+
+        if index_config is None:
+            raise ValueError(f"Index {INDEX} not found in configuration")
+
+        # Get SL and max_sl based on instrument type
+        if 'FUT' in instrument:
+            sl = index_config['fut']['sl']
+            max_sl = index_config['fut']['max_sl']
+            trigger_diff = index_config['fut']['trigger_diff']
+        else:  # Options
+            sl = index_config['opt']['sl']
+            max_sl = index_config['opt']['max_sl']
+            trigger_diff = index_config['opt']['trigger_diff']
+
+        min_lot_size = index_config['minLotSize']
+
+        return sl, max_sl, min_lot_size, trigger_diff
+
+    def get_buy_qty(self, tsym):
+        INDEX = tsym.split(' ')[0]
+
+        # Find the specific index configuration
+        index_config = None
+        for index in self.config['intraday']['indexes']:
+            if index['name'] == INDEX:
+                index_config = index
+                break
+        if index_config is None:
+            raise ValueError(f"Index {INDEX} not found in configuration")
+
+        if 'FUT' in tsym:
+            return index_config['fut']['buyQty']
+
+        return index_config['opt']['buyQty']
 
 # misc = Misc()
 

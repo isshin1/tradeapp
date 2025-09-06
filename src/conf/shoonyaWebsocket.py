@@ -145,9 +145,9 @@ class ShoonyaWebsocket:
         self.setupWebSocket()
         logger.info("shoonya websocket started")
         self.shoonya_api.subscribe("NSE|26000")
-        self.shoonya_api.subscribe("NFO|"+self.nifty_fut_token)
+        self.shoonya_api.subscribe("NFO|"+ str(self.nifty_fut_token))
 
-        logger.info(f"subscribed to NSE|26000 and NFO|{self.nifty_fut_token}")
+        logger.info(f"subscribed to NSE|26000 and NFO|{str(self.nifty_fut_token)}")
 
         print("starting options update")
         thread = threading.Thread(target=self.optionUpdate, daemon=True)

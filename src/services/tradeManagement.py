@@ -21,7 +21,7 @@ import pandas as pd
 import threading
 
 class TradeManagement:
-    def __init__(self, config, dhan_api, shoonya_api,  tradeManager, nifty_fut_token, riskManagementobj, dhanHelper, decisionPoints ):
+    def __init__(self, config, dhan_api, shoonya_api,  tradeManager, nifty_fut_token, riskManagementobj, dhanHelper, decisionPoints , misc):
         self.function_lock = threading.Lock()
         self.config = config
         self.tradeManager = tradeManager
@@ -31,6 +31,7 @@ class TradeManagement:
         self.riskManagementobj = riskManagementobj
         self.dhanHelper = dhanHelper
         self.decisionPoints = decisionPoints
+        self.misc = misc
         
     #
     # def setLtps(self, ltps):
@@ -44,7 +45,7 @@ class TradeManagement:
     #         self.shoonya_api.subscribe("NFO|" + str(token))
 
 
-    def placeSl(self, trade):
+    def placeSl(self, trade:PartialTrade):
         if trade.status != 0:
             return
 
@@ -72,8 +73,8 @@ class TradeManagement:
         else:
             logger.error(
                 "Placing order: security_id={}, exchange_segment={}, transaction_type={}, quantity={}, order_type={}, product_type={}, price={}, trigger_price={}",
-                                trade.getToken(), "NSE_FNO", "SELL" ,trade.getQty(), "STOP_LOSS", trade.getPrd(),
-                                trade.getSlPrice() - trade.getDiff(), trade.getSlPrice()
+                                trade.token, "NSE_FNO", "SELL" ,trade.qty, "STOP_LOSS", trade.prd,
+                                trade.slPrice - trade.diff, trade.slPrice
             );
             logger.error(f"error in placing sl order {res['remarks']} ")
 
@@ -350,11 +351,14 @@ class TradeManagement:
             tsym = order_update['displayName']
             product = order_update['product']
             prd = self.dhanHelper.getProductType(product)
+            instrument = order_update['instrument']
+
+            slPrice, maxSlPrice, minLotSize, diff = self.misc.get_sl_and_max_sl_price(instrument, tsym, self.config)
             optionType = tsym.split(' ')[-1]
 
-            slPrice = entryPrice - 10  # TODO: fetch from config
-            maxSlPrice = entryPrice - 12
-            minLotSize = 75
+            # slPrice = entryPrice - 10  # TODO: fetch from config
+            # maxSlPrice = entryPrice - 12
+            # minLotSize = 75
 
             half = qty // 2
             qty2 = (half // minLotSize) * minLotSize
@@ -365,7 +369,7 @@ class TradeManagement:
             trade1 = PartialTrade(
                 name="trade1", status=0, qty=qty1, entryPrice=entryPrice, slPrice=slPrice, maxSlPrice=maxSlPrice,
                 targetPoints=target1, orderType="STOP_LOSS", prd=prd, exch="NSE_NFO", tsym=tsym,
-                diff=0.5, token=token, optionType=optionType
+                diff=diff, token=token, optionType=optionType
             )
             self.tradeManager.addTrade(token, trade1)
             logger.info(f"trade1 added with qty {qty1}")
@@ -375,7 +379,7 @@ class TradeManagement:
                 trade2 = PartialTrade(
                         name="trade2", status=0, qty=qty2, entryPrice=entryPrice, slPrice=slPrice, maxSlPrice=maxSlPrice,
                         targetPoints=target2, orderType="STOP_LOSS", prd=prd, exch="NSE_NFO", tsym=tsym,
-                        diff=0.5, token=token, optionType=optionType
+                        diff=diff, token=token, optionType=optionType
                     )
 
                 self.tradeManager.addTrade(token, trade2)

@@ -115,7 +115,16 @@ def update_atm_options(ce_token, ce_tsym, pe_token, pe_tsym):
         "ceTsym": ce_tsym,
         "peTsym": pe_tsym
     }
-    print(res)
+    # print(res)
+    send_message(json.dumps(res))
+
+def update_fut(fut_token, fut_tsym):
+    res = {
+        "type": "fut",
+        "token": fut_token,
+        "tsym": fut_tsym
+    }
+    # print(res)
     send_message(json.dumps(res))
 
 def update_order_feed(orders):

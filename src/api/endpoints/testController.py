@@ -108,6 +108,7 @@ async def getGreek():
         epoch = int(datetime.now().timestamp())  # Update epoch in each iteration
         websocketService.send_price_feed("48949", epoch, 100 * random.random())
         websocketService.send_price_feed("48954", epoch, 100 * random.random())
+        websocketService.send_price_feed("53001", epoch, 24800 + 100 * random.random())
         await asyncio.sleep(1)  # Correctly await the sleep coroutine
 @router.get("/api/sampleFirstFetch")
 async def getGreek():

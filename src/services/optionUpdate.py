@@ -4,11 +4,13 @@ from datetime import datetime
 from conf import websocketService
 # from services.tradeManagement import updateOpenOrders
 from conf.logging_config import logger
+from conf.websocketService import update_fut
+
 # r = redis.Redis(host='localhost', port=6379, db=0)
 
 # from conf.shoonyaWebsocket import setChartToken
 class OptionUpdate:
-    def __init__(self, config, dhan_api, shoonya_api,  misc, tradeManagement, tradeManager):
+    def __init__(self, config, dhan_api, shoonya_api,  misc, tradeManagement, tradeManager, nifty_fut_token, nifty_fut_symbol):
         self.delta = config['intraday']['delta']
         self.callPrice = 20000
         self.putPrice = 20000
@@ -21,6 +23,8 @@ class OptionUpdate:
         self.misc = misc
         self.tradeManagement = tradeManagement
         self.tradeManager = tradeManager
+        self.fut_token = nifty_fut_token
+        self.fut_symbol = nifty_fut_symbol
         logger.info(f"using expiry {self.expiry_date}")
 
     def getLtp(self):
@@ -110,6 +114,7 @@ class OptionUpdate:
 
         if flag == 1 or firstFetch:
             websocketService.update_atm_options(self.callToken, self.callSymbol, self.putToken, self.putSymbol)
+            websocketService.update_fut(self.fut_token, self.fut_symbol)
             self.tradeManagement.updateOpenOrders()
             # r.publish('channel1', f"{self.callToken} {self.callSymbol} {self.putToken} {self.putSymbol}")
             # changeChart(self.callToken)

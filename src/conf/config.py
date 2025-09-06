@@ -4,6 +4,7 @@ from datetime import datetime
 from Dependencies.Dhan_Tradehull.Dhan_Tradehull import Tradehull
 from conf.dhanWebsocket import DhanWebsocket
 from conf.shoonyaWebsocket import ShoonyaWebsocket
+from conf.websocketService import ConnectionManager
 from models.DecisionPoints import DecisionPoints
 from services.orderManagement import OrderManagement
 from services.pihole import Pihole
@@ -21,6 +22,7 @@ from services.riskManagement import RiskManagement
 from services.optionUpdate import OptionUpdate
 from services.tradeManagement import TradeManagement
 from models.TradeManager import TradeManager
+# from conf.websocketService import update_fut
 
 date_str = str(datetime.now().today().date())
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -38,13 +40,13 @@ if BASE_DIR not in sys.path:
     sys.path.append(BASE_DIR)
 print(sys.path)
 
-misc = Misc(BASE_DIR)
 # This points to src/
 # CONFIG_PATH = os.path.join(BASE_DIR, 'config.yaml')
 
 with open(BASE_DIR+'/conf/config.yaml', 'r') as file:
     config = yaml.safe_load(file)
 
+misc = Misc(BASE_DIR, config)
 
 client_id = config['dhan']['client_id']
 access_token = config['dhan']['access_token']
@@ -104,18 +106,20 @@ try:
 
         raise Exception("wrong csv file, restart app")
 
-    nifty_fut_symbol = "NIFTY" + datetime.strftime(nifty_monthly_expiry, "%d%b%y").upper() + "F"
-    nifty_fut_token = misc.getToken(nifty_fut_symbol)
-    target1, target2 = config['intraday']['indexes'][0]['targets']
-    logger.info(f"default targets are {target1} and {target2}")
+    # nifty_fut_symbol = "NIFTY" + datetime.strftime(nifty_monthly_expiry, "%d%b%y").upper() + "F"
+    nifty_fut_symbol = "NIFTY SEP FUT"
 
-
+    # nifty_fut_token = misc.getToken(nifty_fut_symbol)
+    nifty_fut_token = str(dhan_api.get_token(nifty_fut_symbol))
+    
     dhanHelper = DhanHelper(dhan_api)
     riskManagement = RiskManagement(config, dhan_api, dhanHelper)
     tradeManager = TradeManager()
+    connection_manager = ConnectionManager()
 
-    tradeManagement =  TradeManagement(config, dhan_api, shoonya_api, tradeManager, nifty_fut_token, riskManagement, dhanHelper, decisionPoints)
-    optionUpdate = OptionUpdate(config, dhan_api, shoonya_api,  misc, tradeManagement, tradeManager)
+    tradeManagement =  TradeManagement(config, dhan_api, shoonya_api, tradeManager, nifty_fut_token, riskManagement, dhanHelper, decisionPoints, misc)
+    optionUpdate = OptionUpdate(config, dhan_api, shoonya_api,  misc, tradeManagement, tradeManager, nifty_fut_token, nifty_fut_symbol)
+
 
     dhanwebsocket = DhanWebsocket(client_id, access_token, tradeManagement )
     dhanwebsocket.start_dhan_websocket()
@@ -125,7 +129,7 @@ try:
 
     checkTokenValidity(access_token)
 
-    orderManagement = OrderManagement(dhan_api, shoonya_api , order_folder, nifty_fut_token, riskManagement, tradeManager, decisionPoints)
+    orderManagement = OrderManagement(dhan_api, shoonya_api , order_folder, nifty_fut_token, riskManagement, tradeManager, decisionPoints, misc)
     # pihole = Pihole()
     # pihole.disablePihole()  # disable blocking on startup
 

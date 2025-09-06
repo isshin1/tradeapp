@@ -7,9 +7,10 @@ from conf import websocketService
 # from conf.shoonyaWebsocket import ltps
 # from models.TradeManager import tradeManager2
 from datetime import datetime
+# from conf.config import config
 
 class OrderManagement:
-    def __init__(self,  dhan_api, shoonya_api , order_folder, nifty_fut_token, riskManagementobj, tradeManager, decisionPoints):
+    def __init__(self,  dhan_api, shoonya_api , order_folder, nifty_fut_token, riskManagementobj, tradeManager, decisionPoints, misc):
         self.decisionPoints = decisionPoints
         self.dhan_api = dhan_api
         self.shoonya_api = shoonya_api
@@ -17,6 +18,7 @@ class OrderManagement:
         self.nifty_fut_token = nifty_fut_token
         self.riskManagementobj = riskManagementobj
         self.tradeManager = tradeManager
+        self.misc = misc
 
     def buyOrder(self, token, order_type, price, bof):
 
@@ -59,12 +61,12 @@ class OrderManagement:
             # ltps[nifty_fut_token] = 22950
 
 
-            if order_type == "LIMIT":
-                fut_ltp = self.tradeManager.ltps[self.nifty_fut_token]
-                if not self.decisionPoints.checkTradeValidity(fut_ltp, optionType):
-                    websocketService.send_toast("Wrong trade", "Price not near any DP")
-                    logger.info(f"Wrong trade, Price not near any DP or DP already traded")
-                    return
+            # if order_type == "LIMIT":
+            #     fut_ltp = self.tradeManager.ltps[self.nifty_fut_token]
+            #     if not self.decisionPoints.checkTradeValidity(fut_ltp, optionType):
+            #         websocketService.send_toast("Wrong trade", "Price not near any DP")
+            #         logger.info(f"Wrong trade, Price not near any DP or DP already traded")
+            #         return
 
 
             if self.tradeManager.ltps[token] < price - 5 and order_type == "LIMIT":
@@ -76,7 +78,8 @@ class OrderManagement:
                 logger.info("higher price than ltp, using ltp as price ")
                 price = self.tradeManager.ltps[token] + 0.5
 
-            qty = self.riskManagementobj.getQty(price)
+            # qty = self.riskManagementobj.getQty(price)
+            qty = self.misc.get_buy_qty(tsym)
 
             res = self.dhan_api.Dhan.place_order(security_id=token, exchange_segment="NSE_FNO", transaction_type="BUY",
                         quantity=qty, order_type='LIMIT', product_type="INTRADAY", price=price, trigger_price=triggerPrice)
