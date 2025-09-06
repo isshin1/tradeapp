@@ -231,7 +231,7 @@ def parse_indexes():
 
 # parse_indexes()
 def downloadCheck(force=False):
-    symbol = nifty_fut_symbol
+    symbol = "NIFTY" + datetime.strftime(nifty_monthly_expiry, "%d%b%y").upper() + "F"
     year = '20' + symbol[-3:-1]
     month = datetime.strptime(symbol[-6:-3], '%b').strftime('%m').zfill(2)
     fut_file = out_folder + '/NIFTY/futureData/' + year + '/' + month + '/3m/NIFTY_F1.csv'

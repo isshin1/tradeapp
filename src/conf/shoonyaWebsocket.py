@@ -133,6 +133,7 @@ class ShoonyaWebsocket:
 
 
     def optionUpdate(self):
+        # time.sleep(10)
         while(True):
             if '26000' in self.tradeManager.ltps:
                 self.optionUpdateObj.updateOptions(int(self.tradeManager.ltps['26000']))
