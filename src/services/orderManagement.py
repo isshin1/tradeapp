@@ -61,12 +61,12 @@ class OrderManagement:
             # ltps[nifty_fut_token] = 22950
 
 
-            # if order_type == "LIMIT":
-            #     fut_ltp = self.tradeManager.ltps[self.nifty_fut_token]
-            #     if not self.decisionPoints.checkTradeValidity(fut_ltp, optionType):
-            #         websocketService.send_toast("Wrong trade", "Price not near any DP")
-            #         logger.info(f"Wrong trade, Price not near any DP or DP already traded")
-            #         return
+            if order_type == "LIMIT":
+                fut_ltp = self.tradeManager.ltps[self.nifty_fut_token]
+                if not self.decisionPoints.checkTradeValidity(fut_ltp, optionType):
+                    websocketService.send_toast("Wrong trade", "Price not near any DP")
+                    logger.info(f"Wrong trade, Price not near any DP or DP already traded")
+                    return
 
 
             if self.tradeManager.ltps[token] < price - 5 and order_type == "LIMIT":

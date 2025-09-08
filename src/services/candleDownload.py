@@ -253,9 +253,9 @@ def downloadCheck(force=False):
         logger.info("Downloading candlestick data now")
         parse_indexes()
         orderManagement.getOrderBook()
-        if os.path.exists('/.dockerenv'):
-            logger.info("stopping container now")
-            misc.closeContainer()
+        # if os.path.exists('/.dockerenv'):
+        #     logger.info("stopping container now")
+        #     misc.closeContainer()
 
 
     else:

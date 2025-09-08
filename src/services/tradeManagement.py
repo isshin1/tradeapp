@@ -353,7 +353,7 @@ class TradeManagement:
             prd = self.dhanHelper.getProductType(product)
             instrument = order_update['instrument']
 
-            slPrice, maxSlPrice, minLotSize, diff = self.misc.get_sl_and_max_sl_price(instrument, tsym, self.config)
+            slPrice, maxSlPrice, minLotSize, diff = self.misc.get_sl_and_max_sl_price(instrument, tsym)
             optionType = tsym.split(' ')[-1]
 
             # slPrice = entryPrice - 10  # TODO: fetch from config

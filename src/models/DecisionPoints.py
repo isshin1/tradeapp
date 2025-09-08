@@ -124,7 +124,7 @@ class DecisionPoints:
                     decision_point.date = dp_dict['date']
                     self.decisionPoints.append(decision_point)
 
-            logger.info(f"Loaded {len(self.decisionPoints)} decision points from database")
+            # logger.info(f"Loaded {len(self.decisionPoints)} decision points from database")
 
         except Exception as e:
             logger.error(f"Error loading decision points from database: {e}")

@@ -197,7 +197,7 @@ class DBHelper:
                 # Access all attributes to ensure they're loaded
                 _ = dp.name, dp.price, dp.call, dp.put, dp.date
 
-            logger.info(f"Retrieved {len(dps)} DPs for date {date}")
+            # logger.info(f"Retrieved {len(dps)} DPs for date {date}")
             return dps
 
     def get_plan(self, date) -> Dict[str, Any]:
@@ -237,7 +237,7 @@ class DBHelper:
                 query = query.filter(Dp.date == date)
 
             dps = query.all()
-            logger.info(f"Retrieved {len(dps)} DPs for name {name}")
+            # logger.info(f"Retrieved {len(dps)} DPs for name {name}")
             return dps
 
     def get_dps_as_dict(self, date) -> List[Dict[str, Any]]:
@@ -267,7 +267,7 @@ class DBHelper:
                 }
                 dp_dicts.append(dp_dict)
 
-            logger.info(f"Retrieved {len(dp_dicts)} DPs as dicts for date {date}")
+            # logger.info(f"Retrieved {len(dp_dicts)} DPs as dicts for date {date}")
             return dp_dicts
 #
 #

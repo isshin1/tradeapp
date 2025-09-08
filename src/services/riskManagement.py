@@ -86,7 +86,7 @@ class RiskManagement:
             return self.dhan_api.kill_switch('ON')
 
     def killswitch(self):
-        return
+
         start_time = time(9, 0)
         end_time = time(15, 30)
 
