@@ -63,30 +63,27 @@ class DBHelper:
         finally:
             session.close()
 
-    def add_or_update_plan(self, plan_schema) -> Plan:
+    def add_or_update_plan(self, plan_schema, db: Session) -> Plan:
         """
         Add or update a plan for a specific date.
-
         Args:
             plan_schema: Schema object with date and plan attributes
-
+            db: Database session
         Returns:
             Plan: The created or updated Plan object
         """
-        with self.get_db_session() as db:
-            plan = db.query(Plan).filter(Plan.date == plan_schema.date).first()
+        plan = db.query(Plan).filter(Plan.date == plan_schema.date).first()
+        if plan:
+            plan.plan = plan_schema.plan
+            logger.info(f"Updated plan for date {plan_schema.date}")
+        else:
+            plan = Plan(date=plan_schema.date, plan=plan_schema.plan)
+            db.add(plan)
+            logger.info(f"Created new plan for date {plan_schema.date}")
 
-            if plan:
-                plan.plan = plan_schema.plan
-                logger.info(f"Updated plan for date {plan_schema.date}")
-            else:
-                plan = Plan(date=plan_schema.date, plan=plan_schema.plan)
-                db.add(plan)
-                logger.info(f"Created new plan for date {plan_schema.date}")
-
-            db.flush()  # Flush to get the ID before commit
-            db.refresh(plan)
-            return plan
+        db.commit()
+        db.refresh(plan)
+        return plan
 
     def add_or_update_dp(self, dp_schema) -> Dp:
         """

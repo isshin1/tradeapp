@@ -49,14 +49,14 @@ class TradePlanUpdate(BaseModel):
 def get_plan(date: date, db: Session = Depends(db_helper.get_db)) -> Dict[str, str]:
     try:
         date = date.strftime("%Y-%m-%d")
-        return db_helper.get_plan(db, date)
+        return db_helper.get_plan(date)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/api/tradePlan", response_model=PlanSchema)
 def create_or_update_plan(plan: PlanSchema, db: Session = Depends(db_helper.get_db), check_roles: None = Depends(role_checker(["ROLE_ADMIN"]))):
     try:
-        db_plan = db_helper.add_or_update_plan(db, plan)
+        db_plan = db_helper.add_or_update_plan(plan, db)  # Pass the db session
         return db_plan
     except Exception as e:
         logger.error(e)

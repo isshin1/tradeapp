@@ -6,7 +6,7 @@ Base = declarative_base()
 
 class Plan(Base):
     __tablename__ = "plans"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)  # Make sure autoincrement=True
     date = Column(Date, unique=True, nullable=False)
     plan = Column(String, nullable=False)
 
