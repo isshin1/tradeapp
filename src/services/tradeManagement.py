@@ -353,7 +353,7 @@ class TradeManagement:
             prd = self.dhanHelper.getProductType(product)
             instrument = order_update['instrument']
 
-            slPrice, maxSlPrice, minLotSize, diff = self.misc.get_sl_and_max_sl_price(instrument, tsym)
+            slPrice, maxSlPrice, minLotSize, diff, target1, target2 = self.misc.get_sl_and_max_sl_price(instrument, tsym)
             optionType = tsym.split(' ')[-1]
 
             # slPrice = entryPrice - 10  # TODO: fetch from config
@@ -365,7 +365,6 @@ class TradeManagement:
             qty1 = qty - qty2
 
 
-            target1, target2 = self.config['intraday']['indexes'][0]['targets']
             trade1 = PartialTrade(
                 name="trade1", status=0, qty=qty1, entryPrice=entryPrice, slPrice=slPrice, maxSlPrice=maxSlPrice,
                 targetPoints=target1, orderType="STOP_LOSS", prd=prd, exch="NSE_NFO", tsym=tsym,

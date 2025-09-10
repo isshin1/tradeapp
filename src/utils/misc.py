@@ -409,14 +409,16 @@ class Misc:
             sl = index_config['fut']['sl']
             max_sl = index_config['fut']['max_sl']
             trigger_diff = index_config['fut']['trigger_diff']
+            target1, target2 = index_config['fut']['targets']
         else:  # Options
             sl = index_config['opt']['sl']
             max_sl = index_config['opt']['max_sl']
             trigger_diff = index_config['opt']['trigger_diff']
+            target1, target2 = index_config['opt']['targets']
 
         min_lot_size = index_config['minLotSize']
 
-        return sl, max_sl, min_lot_size, trigger_diff
+        return sl, max_sl, min_lot_size, trigger_diff, target1, target2
 
     def get_buy_qty(self, tsym):
         INDEX = tsym.split(' ')[0]
