@@ -242,7 +242,7 @@ class TradeManagement:
                     logger.info(f"trail check for DP cross")
                     df = candlestickData.getTokenDf(trade.token)
                     fut_latest_price = candlestickData.getLatestPrice(self.nifty_fut_token)
-                    new_sl_time, dp_price = candlestickData.getCrossedDp(fut_latest_price, self.nifty_fut_token, self.decisionPoints.self.decisionPoints, trade)
+                    new_sl_time, dp_price = candlestickData.getCrossedDp(fut_latest_price, self.nifty_fut_token, self.decisionPoints.decisionPoints, trade)
                     if new_sl_time != None and new_sl_time in df['time'].values:
                         # new_sl = df.loc[new_sl_time, 'low'] # low of last candle which crossed dp
                         new_sl = df[df['time'] == new_sl_time]['low'].values[0]
