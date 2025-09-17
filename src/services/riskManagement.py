@@ -76,7 +76,21 @@ class RiskManagement:
                 return qty
         return 0
 
+    def is_trading_session(self):
+        start_time = time(9, 0)
+        end_time = time(15, 30)
+        return datetime.now().time() > start_time and datetime.now().time() < end_time
+
     def endSession(self, force=True):
+        if not self.is_trading_session():
+            return
+
+        start_time = time(9, 0)
+        end_time = time(15, 30)
+
+        if datetime.now().time() < start_time or datetime.now().time() > end_time:
+            return
+
         self.update()
         logger.info(f"turning killswitch on with trades {self.tradeCount} and pnl {self.pnl}")
         self.dhan_api.cancel_all_orders()
@@ -86,13 +100,6 @@ class RiskManagement:
             return self.dhan_api.kill_switch('ON')
 
     def killswitch(self):
-
-        start_time = time(9, 0)
-        end_time = time(15, 30)
-
-        if datetime.now().time() < start_time or datetime.now().time() > end_time:
-            return
-
         if self.maxLossCrossed():
             return self.endSession()
         return None
