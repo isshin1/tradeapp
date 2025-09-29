@@ -9,25 +9,26 @@ from conf.websocketService import update_timer
 
 # from services.pihole import pihole
 class RiskManagement:
-    def __init__(self, config, dhan_api, dhanHelper ):
+    # def __init__(self, config, dhan_api, dhan_helper ):
+    def __init__(self, di_container):
+        self.di_container = di_container
+
+        # Get only the essential dependencies immediately
+        self.config = self.di_container.get('config')
+        self.dhan_api = self.di_container.get('dhan_api')
+        self.dhan_helper = self.di_container.get('dhan_helper')
+
         self.pnl = 0
         self.peakPnl = 0
         self.tradeCount = 0
-        self.maxTradeCount = config['intraday']['maxTradeCount']
-        self.config = config
+        self.maxTradeCount = self.config['intraday']['maxTradeCount']
         # self.qty = self.get_buy_qty('NIFTY')
-        self.maxLoss = config['intraday']['maxLoss']
+        self.maxLoss = self.config['intraday']['maxLoss']
         self.lastTradeTime = datetime.today().replace(hour=0, minute=0)
-        self.dhan_api = dhan_api
-        self.margin = dhan_api.get_balance()
-        self.dhanHelper = dhanHelper
-        # self.lastTradeTime = datetime.now()
+        self.margin = self.dhan_helper.get_balance()
 
-        # self.scheduler = threading.Timer(60, self.periodic_check)
-        # self.scheduler.start()
-
-        self.scheduler2 = threading.Timer(1, self.wait_timer)
-        self.scheduler2.start()
+        # self.scheduler2 = threading.Timer(1, self.wait_timer)
+        # self.scheduler2.start()
         logger.info(f"max loss is {self.maxLoss}")
 
     def getQty(self, price):
@@ -46,13 +47,13 @@ class RiskManagement:
         return qty
 
     def update(self):
-        self.tradeCount = self.dhanHelper.getTradeCount()
-        # self.pnl = self.dhanHelper.getPnl() - (40 + self.qty * 25 / 75) * self.tradeCount # TODO: change the brokerage function, appromixated currently
-        self.pnl = self.dhanHelper.getPnl()
+        self.tradeCount = self.dhan_helper.getTradeCount()
+        # self.pnl = self.dhan_helper.getPnl() - (40 + self.qty * 25 / 75) * self.tradeCount # TODO: change the brokerage function, appromixated currently
+        self.pnl = self.dhan_helper.getPnl()
 
         if(self.pnl > self.peakPnl):
             self.peakPnl = self.pnl
-        self.margin = self.dhan_api.get_balance()
+        self.margin = self.dhan_helper.get_balance()
 
     def maxLossCrossed(self):
         self.update()
@@ -82,14 +83,15 @@ class RiskManagement:
         return datetime.now().time() > start_time and datetime.now().time() < end_time
 
     def endSession(self, force=True):
+        # return
         if not self.is_trading_session():
             return
 
-        start_time = time(9, 0)
-        end_time = time(15, 30)
-
-        if datetime.now().time() < start_time or datetime.now().time() > end_time:
-            return
+        # start_time = time(9, 0)
+        # end_time = time(15, 30)
+        #
+        # if datetime.now().time() < start_time or datetime.now().time() > end_time:
+        #     return
 
         self.update()
         logger.info(f"turning killswitch on with trades {self.tradeCount} and pnl {self.pnl}")
@@ -127,15 +129,15 @@ class RiskManagement:
         self.lastTradeTime = datetime.now()
         logger.info("running sanity check")
         thread1 = threading.Thread(target=self.killswitch)
-        thread2 = threading.Thread(target=self.lockScreen)
+        # thread2 = threading.Thread(target=self.lockScreen)
 
         # Start both threads
         thread1.start()
-        thread2.start()
+        # thread2.start()
 
         # Wait for both threads to complete
         thread1.join()
-        thread2.join()
+        # thread2.join()
 
         # pihole.enablePihole()
 

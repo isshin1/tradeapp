@@ -2,7 +2,7 @@
     The orderupdate class is designed to facilitate asynchronous communication with the DhanHQ API via WebSocket.
     It enables users to subscribe to market data for a list of instruments and receive real-time updates.
 
-    :copyright: (c) 2024 by Dhan.
+    :copyright: (c) 2025 by Dhan.
     :license: see LICENSE for details.
 """
 
@@ -11,7 +11,8 @@ import websockets
 import json
 from typing import Callable, Optional
 
-class OrderSocket:
+
+class OrderUpdate:
     """
     A class to manage WebSocket connections for order updates.
 
@@ -20,9 +21,10 @@ class OrderSocket:
         access_token (str): The access token for authentication.
         order_feed_wss (str): The WebSocket URL for order updates.
     """
-    # on_update: Optional[Callable[[dict], None]] = None
 
-    def __init__(self, client_id, access_token):
+    on_update: Optional[Callable[[dict], None]] = None
+
+    def __init__(self, dhan_context):
         """
         Initializes the OrderSocket with client ID and access token.
 
@@ -30,8 +32,8 @@ class OrderSocket:
             client_id (str): The client ID for authentication.
             access_token (str): The access token for authentication.
         """
-        self.client_id = client_id
-        self.access_token = access_token
+        self.client_id = dhan_context.get_client_id()
+        self.access_token = dhan_context.get_access_token()
         self.order_feed_wss = "wss://api-order-update.dhan.co"
 
     async def connect_order_update(self):
@@ -55,9 +57,9 @@ class OrderSocket:
 
             async for message in websocket:
                 data = json.loads(message)
-                await self.handle_order_update(data)
+                self.handle_order_update(data)
 
-    async def handle_order_update(self, order_update):
+    def handle_order_update(self, order_update):
         """
         Handles incoming order update messages.
 
@@ -67,6 +69,7 @@ class OrderSocket:
         if order_update.get('Type') == 'order_alert':
             if self.on_update and callable(self.on_update):
                 return self.on_update(order_update)
+
             data = order_update.get('Data', {})
             if "orderNo" in data:
                 order_id = data["orderNo"]

@@ -1,5 +1,6 @@
 # from models.TradeManager import tradeManager
 import math, mibian
+import time
 from datetime import datetime
 from conf import websocketService
 # from services.tradeManagement import updateOpenOrders
@@ -10,21 +11,34 @@ from conf.websocketService import update_fut
 
 # from conf.shoonyaWebsocket import setChartToken
 class OptionUpdate:
-    def __init__(self, config, dhan_api, shoonya_api,  misc, tradeManagement, tradeManager, nifty_fut_token, nifty_fut_symbol):
-        self.delta = config['intraday']['delta']
+    # def __init__(self, config, dhan_api, shoonya_api,  misc, tradeManagement, tradeManager, nifty_fut_token, nifty_fut_symbol):
+    def __init__(self, di_container):
+        self.di_container = di_container
+        self.dhan_websocket = self.di_container.get('dhan_websocket')
+        self.shoonya_websocket = self.di_container.get('shoonya_websocket')
+
+        self.config = self.di_container.get('config')
+        self.dhan_api = self.di_container.get('dhan_api')
+        self.shoonya_api = self.di_container.get('shoonya_api')
+        self.dhan_helper = self.di_container.get('dhan_helper')
+        self.trade_manager = self.di_container.get('trade_manager')
+        self.decision_points = self.di_container.get('decision_points_manager')
+        misc = self.di_container.get('misc')
+        # risk_management = self.di_container.get('risk_management_service')
+        trade_management = self.di_container.get('trade_management_service')
+        self.delta = self.config['intraday']['delta']
         self.callPrice = 20000
         self.putPrice = 20000
-        self.shoonya_api = shoonya_api
-        self.dhan_api = dhan_api
-        self.expiry_date = misc.get_nse_weekly_expiry('NIFTY', 0, download=False)
-        self.subscribedTokens = ['26000']
-        self.ltp = self.getLtp()
-        self.getTokens(self.ltp)
+        self.expiry_date = self.config['nifty_monthly_expiry']
+        self.subscribedTokens = ['13']
+        # self.ltp = self.getLtp()
+        # self.getTokens(self.ltp)
+        self.init = None
         self.misc = misc
-        self.tradeManagement = tradeManagement
-        self.tradeManager = tradeManager
-        self.fut_token = nifty_fut_token
-        self.fut_symbol = nifty_fut_symbol
+        self.tradeManagement = trade_management
+        # self.tradeManager = trade_manager
+        self.fut_token = self.config['nifty_fut_token']
+        self.fut_symbol = self.config['nifty_fut_symbol']
         logger.info(f"using expiry {self.expiry_date}")
 
     def getLtp(self):
@@ -36,8 +50,8 @@ class OptionUpdate:
         spot_price = round(ltp / 50) * 50
         self.callSymbol = "NIFTY " + self.expiry_date.strftime("%d %b ").upper() + str(spot_price) + " CALL"
         self.putSymbol = "NIFTY " +  self.expiry_date.strftime("%d %b ").upper() + str(spot_price) + " PUT"
-        self.callToken = self.dhan_api.get_security_id(self.callSymbol, "NFO")
-        self.putToken = self.dhan_api.get_security_id(self.putSymbol, "NFO")
+        self.callToken = self.dhan_helper.get_security_id(self.callSymbol, "NFO")
+        self.putToken = self.dhan_helper.get_security_id(self.putSymbol, "NFO")
 
     def  getCallDelta(self, strike_price, spot_price):
         current_date = datetime.now().strftime('%d-%m-%y')
@@ -70,13 +84,15 @@ class OptionUpdate:
     def updateOptions(self, spot_price:int = 0, firstFetch=False ):
 
         # do not update options if trade is active
-        if self.tradeManager.isTradeActive():
+        if self.trade_manager.isTradeActive():
             return
 
         if spot_price == 0:
-            spot_price = self.ltp
+            spot_price = self.trade_manager.ltps[self.config['nifty_token']]
         else:
             spot_price = round(spot_price / 50) * 50
+
+        spot_price = round(spot_price / 50) * 50
 
         strike_list = list(range(spot_price - 5*50, spot_price + 5*50 + 1, 50))
         call_delta_list = list(map(lambda x: self.getCallDelta(x, spot_price), strike_list))
@@ -88,16 +104,17 @@ class OptionUpdate:
         if firstFetch:
             self.callPrice = 0
             self.putPrice = 0
-            self.subscribedTokens = ['26000']
+            self.subscribedTokens = ['13']
 
         flag = 0
         if callPrice != self.callPrice:
             self.callPrice = callPrice
             self.callSymbol = "NIFTY " +  self.expiry_date.strftime("%d %b ").upper() + str(callPrice) + " CALL"
             # self.shoonya_api.unsubscribe("NFO|"+ str(self.callToken))
-            self.callToken = self.dhan_api.get_security_id(self.callSymbol, "NFO")
+            self.callToken = self.dhan_helper.get_security_id(self.callSymbol, "NFO")
             if self.callToken not in self.subscribedTokens:
-                self.shoonya_api.subscribe("NFO|"+ str(self.callToken))
+                self.shoonya_websocket.subscribe(str(self.callToken))
+                # self.dhan_websocket.subscribe(self.callToken)
                 self.subscribedTokens.append(self.callToken)
 
             flag = 1
@@ -106,9 +123,10 @@ class OptionUpdate:
             self.putPrice = putPrice
             self.putSymbol = "NIFTY " +  self.expiry_date.strftime("%d %b ").upper() + str(putPrice) + " PUT"
             # self.shoonya_api.unsubscribe("NFO|"+ str(self.putToken))
-            self.putToken = self.dhan_api.get_security_id(self.putSymbol, "NFO")
+            self.putToken = self.dhan_helper.get_security_id(self.putSymbol, "NFO")
             if self.putToken not in self.subscribedTokens:
-                self.shoonya_api.subscribe("NFO|"+ str(self.putToken))
+                self.shoonya_websocket.subscribe(str(self.putToken))
+                # self.dhan_websocket.subscribe(self.putToken)
                 self.subscribedTokens.append(self.putToken)
             flag = 1
 

@@ -93,7 +93,7 @@ class CandlestickData:
             # Convert the timestamp to IST
             # tick_timestamp_ist = tick_timestamp_utc.tz_convert('Asia/Kolkata')
 
-            candle_start = tick_timestamp.floor('3T').strftime('%Y-%m-%dT%H:%M:%S')
+            candle_start = tick_timestamp.floor('3min').strftime('%Y-%m-%dT%H:%M:%S')
 
             if token not in self.candlestickData:
                 self.candlestickData[token] = OrderedDict()
@@ -113,7 +113,7 @@ class CandlestickData:
                     'close': price,
                 }
         except Exception as e:
-            logger.error(f"error in updating tick data {e}")
+            logger.error(f"error in updating candlestick data {e}")
 
     def getMspLow(self, fut_token, trade):
         try:

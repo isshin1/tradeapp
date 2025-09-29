@@ -10,26 +10,53 @@ import concurrent.futures
 from conf.websocketService import send_price_feed
 from models.candlestickData import candlestickData
 import csv
+from conf.config import get_date_folders
 
 # from services.charts import chart
 # update nifty spot price in consul via feed
 class ShoonyaWebsocket:
-    def __init__(self, config, tradeManagement, tradeManager, shoonya_api, nifty_fut_token, dhan_api, feed_folder, optionUpdateObj ):
-        self.config = config
+    def __init__(self, di_container ):
+        self.di_container = di_container
+
+        self.config = self.di_container.get('config')
+        self.shoonya_api = self.di_container.get('shoonya_api')
+        self.dhan_helper = self.di_container.get('dhan_helper')
+        self.tradeManager = self.di_container.get('trade_manager')
+        self.misc = self.di_container.get('misc')
+
+        self.nifty_fut_token = self.config['nifty_fut_token']
+        self.nifty_token = self.config['nifty_token']
+        self.feed_file = get_date_folders()['feed'] + '/' + str(datetime.now().date()) + ".csv"
+
+        self._option_update = None
+        self._trade_management = None
+
         self.feed_opened = False
         self.socket_opened = False
         self.feedJson={}
         self.current_chart_token = 0
-        self.tradeManagement = tradeManagement
-        self.tradeManager = tradeManager
-        self.shoonya_api = shoonya_api
-        self.nifty_fut_token = nifty_fut_token
-        self.dhan_api = dhan_api
-        self.optionUpdateObj = optionUpdateObj
-        self.feed_file = feed_folder + str(datetime.now().date()) + ".csv"
+
+
         self.initialize_feed_file()
         self.current_chart_token = 0
 # marketAnalysis.run()
+
+
+
+    @property
+    def option_update(self):
+        """Lazy loading property for option_update_service"""
+        if self._option_update is None:
+            self._option_update = self.di_container.get('option_update_service')
+        return self._option_update
+
+    @property
+    def trade_management(self):
+        """Lazy loading property for trade_management_service"""
+        if self._trade_management is None:
+            self._trade_management = self.di_container.get('trade_management_service')
+        return self._trade_management
+
 
     def initialize_feed_file(self):
         if not os.path.exists(self.feed_file):
@@ -56,13 +83,31 @@ class ShoonyaWebsocket:
     def setChartToken(self, token):
         self.current_chart_token = token
 
+
+    def atm_option_update(self, token, feed_data):
+        try:
+            if token != self.nifty_token:
+                return
+
+            if self.option_update.init == None:
+                self.option_update.getTokens(feed_data['ltp'])
+                self.option_update.updateOptions(int(self.tradeManager.ltps[self.nifty_token]))
+                self.option_update.init = True
+                return
+
+            if feed_data['ft'] % 10 == 0:
+                self.option_update.updateOptions(int(self.tradeManager.ltps[self.nifty_token]))
+        except Exception as err:
+            logger.error(f"error with option update occured {err}")
+
+
     def event_handler_feed_update(self, tick_data):
         UPDATE = False
         if 'tk' in tick_data:
             token = tick_data['tk']
             timest = datetime.fromtimestamp(int(tick_data['ft'])).isoformat()
             epoch = tick_data.get("ft")
-            feed_data = {'tt': timest, 'ft': epoch}
+            feed_data = {'tt': timest, 'ft': float(epoch)}
 
             if 'lp' in tick_data:
                 feed_data['ltp'] = float(tick_data['lp'])
@@ -86,17 +131,21 @@ class ShoonyaWebsocket:
             if UPDATE:
                     if 'ltp' in feed_data:
                         try:
-                            self.tradeManager.ltps[token] = float(feed_data['ltp'])
+                            ltp = float(feed_data['ltp'])
+                            self.tradeManager.ltps[token] = ltp
                             # manageOptionSl(token, float(feedJson[token]['ltp']))
                             with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
                                 futures = []
-                                if 'Tsym' not in feed_data and int(token) != 26000:
-                                    feed_data['Tsym'] = self.dhan_api.get_trading_symbol(int(token))
-                                    futures.append(executor.submit(self.writeFeed, feed_data['tt'], token, feed_data['Tsym'],  float(self.feedJson[token]['ltp']))) # write feed to a file
-                                futures.append(executor.submit(self.tradeManagement.manageOptionSl, token, float(self.feedJson[token]['ltp']))) # send ltp to trade manager
-                                futures.append(executor.submit(send_price_feed, token, epoch, float(self.feedJson[token]['ltp']))) # send ltp to frontend
+                                if int(token) != 26000:
+                                    feed_data['Tsym'] = self.dhan_helper.get_trading_symbol(int(token))
+                                else:
+                                    feed_data['Tsym'] = "Nifty 50"
+                                futures.append(executor.submit(self.writeFeed, feed_data['tt'], token, feed_data['Tsym'],  ltp)) # write feed to a file
+                                futures.append(executor.submit(self.trade_management.manageOptionSl, token, ltp)) # send ltp to trade manager
+                                futures.append(executor.submit(send_price_feed, token, epoch, ltp)) # send ltp to frontend
                                 # futures.append(executor.submit(self.tradeManagement.setLtps, self.tradeManagement.ltps)) # update ltps globally TODO: fetch from candlestick data instaed ?
                                 futures.append(executor.submit(candlestickData.updateTickData, token, feed_data)) # update candlestick data TODO: update it later on, what does it mean ?
+                                futures.append(executor.submit(self.atm_option_update, token, feed_data))
                                 for future in futures:
                                     try:
                                         future.result()
@@ -131,6 +180,11 @@ class ShoonyaWebsocket:
             time.sleep(1)
             pass
 
+    def subscribe(self, token, exchange="NFO"):
+        # tsym = self.misc.getSymbol(token)
+        tsym = self.dhan_helper.get_trading_symbol(int(token))
+        self.shoonya_api.subscribe(exchange + "|" + str(token))
+        logger.info(f"subscribed to {tsym} {token}")
 
     def optionUpdate(self):
         # time.sleep(10)
@@ -149,9 +203,9 @@ class ShoonyaWebsocket:
         self.shoonya_api.subscribe("NFO|"+ str(self.nifty_fut_token))
 
         logger.info(f"subscribed to NSE|26000 and NFO|{str(self.nifty_fut_token)}")
-
-        print("starting options update")
-        thread = threading.Thread(target=self.optionUpdate, daemon=True)
-        thread.start()
+        #
+        # print("starting options update")
+        # thread = threading.Thread(target=self.optionUpdate, daemon=True)
+        # thread.start()
 
 

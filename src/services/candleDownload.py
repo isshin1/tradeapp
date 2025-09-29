@@ -264,7 +264,7 @@ def downloadCheck(force=False):
 # downloadCheck(force=True)
 def download_candlestick_data():
     # download_monthly_futures('NIFTY', 'NFO')
-
+    return
     if datetime.now().weekday() >= 5:
         logger.info("weekday, skipping candle download")
         return

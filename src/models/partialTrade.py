@@ -9,6 +9,7 @@ class PartialTrade:
         self.status = status  # 0:inactive, 1:active, 2:completed
         self.qty = qty
         self.entryPrice = entryPrice
+        self.maxPrice = entryPrice
         self.exitPrice = None
         self.slPrice = slPrice
         self.maxSlPrice = maxSlPrice

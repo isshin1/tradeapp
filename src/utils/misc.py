@@ -14,13 +14,14 @@ import time
 sys.path.append("/home/kushy/Syncthing/Projects/Shoonya/tradeParser/")
 import mibian
 import zipfile, requests, io
+from conf.config import BASE_DIR
 # from conf.config import logger
 pd.set_option('mode.chained_assignment', None)
 
 current_date = time.strftime("%Y-%m-%d")
 
 class Misc:
-    def __init__(self, BASE_DIR, config):
+    def __init__(self, config):
         self.BASE_DIR = BASE_DIR
         self.nfo_file =  BASE_DIR + '/Dependencies/' + 'NFO_' + str(current_date) + '.csv'
         self.bfo_file =  BASE_DIR + '/Dependencies/' + 'BFO_' + str(current_date) + '.csv'
@@ -176,7 +177,7 @@ class Misc:
         df_index['Expiry'] = df_index['Expiry'].apply(lambda x: datetime.strptime(x.title(), '%d-%b-%Y'))
         df_index = df_index.sort_values(by='Expiry')
         expiry_dates = df_index['Expiry'].unique()
-        expiry_dates_fut = df_index[df_index['Instrument'] == 'FUTIDX']['Expiry'].unique()
+        # expiry_dates_fut = df_index[df_index['Instrument'] == 'FUTIDX']['Expiry'].unique()
         expiry_date = expiry_dates_fut[month]
         expiry_date = datetime.fromtimestamp(expiry_date.timestamp())
         return expiry_date
@@ -276,7 +277,8 @@ class Misc:
         return
 
 
-    def getSymbol(self, df, token):
+    def getSymbol(self, token):
+        df = pd.read_csv(self.nfo_file)
         token = int(token)
         df = df[df.Token == int(token)]
         if not df.empty:

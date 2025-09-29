@@ -1,18 +1,14 @@
 # from Dhan_Tradehull import Tradehull
 from datetime import datetime, timedelta
 
-from conf.config import dhan_api, shoonya_api, logger, nifty_fut_token, riskManagement
 from conf.websocketService import update_order_feed, send_toast
 from models.partialTrade import PartialTrade
-from conf.config import decisionPoints
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict
-
-from conf.config import riskManagement
+from conf.logging_config import logger
 # from utils.dhanHelper import getProductType
 # from conf import websocketService
 import concurrent.futures
-from conf.config import tradeManager
 import pandas as pd
 from random import randint
 from models.candlestickData import candlestickData
@@ -58,7 +54,7 @@ def placeSl(pt, token, trade):
 
     logger.info(f"placing sl order for {trade.name} and token {trade.token}")
 
-    # res = dhan_api.Dhan.place_order(security_id=trade.token, exchange_segment="NSE_FNO", transaction_type="SELL",
+    # res = dhan_api.place_order(security_id=trade.token, exchange_segment="NSE_FNO", transaction_type="SELL",
     #             quantity=trade.qty, order_type="STOP_LOSS", product_type=trade.prd, price=trade.slPrice, trigger_price=trade.slPrice + trade.diff)
     # logger.info(res)
     # Todo: fix order status when rejected
@@ -121,7 +117,7 @@ def manageTrade(ltp, token, pt, trade, current_time):
             if points >= 2.0 / 3 * targetPoints and trade.orderType == "STOP_LOSS":
                 logger.info(f"{trade.name} modifying sl order from STOP_LOSS to LIMIT")
                 # logger.debug(f"modifying trade {trade.__str__()}")
-                # ret = dhan_api.Dhan.modify_order(order_id=trade.orderNumber, order_type="LIMIT", leg_name="ENTRY_LEG",
+                # ret = dhan_api.modify_order(order_id=trade.orderNumber, order_type="LIMIT", leg_name="ENTRY_LEG",
                 #                                  quantity=trade.qty, price=trade.targetPoints, trigger_price=0, disclosed_quantity=0, validity='DAY')
                 logger.info(f"{trade.name} cancelling sl order {trade.orderNumber} ")
                 res = dict()
@@ -136,13 +132,13 @@ def manageTrade(ltp, token, pt, trade, current_time):
                 logger.info(f"{trade.name} sl order modified from STOP_LOSS to LMT with target {trade.targetPoints}")
             if points <= 1.0 / 3 * targetPoints and trade.orderType == "LMT":
                 logger.info("{trade.name} modifying target order from LIMIT to STOP_LOSS")
-                # ret = dhan_api.Dhan.modify_order(order_id=trade.orderNumber, order_type="STOP_LOSS", leg_name="ENTRY_LEG",
+                # ret = dhan_api.modify_order(order_id=trade.orderNumber, order_type="STOP_LOSS", leg_name="ENTRY_LEG",
                 #                                  quantity=trade.qty, price=trade.slPrice, trigger_price=trade.slPrice + trade.diff, disclosed_quantity=0, validity='DAY')
                 for i in range(0,2):
                     # dhan_api.cancel_order(OrderID=trade.targetOrderNumbers[i])
                     logger.info(f"{trade.name} cancelling limit order {trade.orderNumber} ")
 
-                # res = dhan_api.Dhan.place_order(security_id=trade.token, exchange_segment="NSE_FNO", transaction_type="SELL",
+                # res = dhan_api.place_order(security_id=trade.token, exchange_segment="NSE_FNO", transaction_type="SELL",
                 #                                 quantity=trade.qty, order_type="STOP_LOSS", product_type=trade.prd,
                 #                                 price=trade.slPrice, trigger_price=trade.slPrice + trade.diff)
                 res = dict()
@@ -250,7 +246,7 @@ def manageTrade(ltp, token, pt, trade, current_time):
 
 def exit_all_trades(trade):
     try:
-        dhan_api.Dhan.place_order(
+        dhan_api.place_order(
         security_id=trade.token,
         exchange_segment="NSE_FNO",
         transaction_type="SELL",
@@ -401,7 +397,7 @@ def updateSl(token, new_sl_price, order_update):
                         else:
                             logger.info("modifying sl for %s", partial_trade.name)
                             future = executor.submit(
-                                dhan_api.Dhan.modify_order,
+                                dhan_api.modify_order,
                                 order_id=partial_trade.orderNumber,
                                 order_type="STOP_LOSS",
                                 leg_name="ENTRY_LEG",
@@ -458,11 +454,11 @@ def handle_sell_order(token, order_update):
             logger.info(f"set trade to {tradeManager.trade}")
             logger.info("checking killswitch condition")
             # update last trade time
-            riskManagementobj.sanityCheck()
+            # riskManagementobj.sanityCheck()
 
 
 def updateOpenOrders():
-    orders =  dhan_api.Dhan.get_order_list()['data']
+    orders =  dhan_api.get_order_list()['data']
     openOrders = []
     for order in orders:
         if order['orderStatus'].upper() == 'PENDING':
@@ -513,7 +509,7 @@ def updateTargets(targets: Dict[str, float]):
         if trade.orderType == "LMT":
             for i in range(0,2):
                 logger.info(f" trade {i+1} modifying limit order price from {old_targets[i]} to {trade.targetPointss[i]} ")
-                # ret = dhan_api.Dhan.modify_order(order_id=trade.targetOrderNumbers[i], order_type="LIMIT", quantity=trade.targetQtys[i],
+                # ret = dhan_api.modify_order(order_id=trade.targetOrderNumbers[i], order_type="LIMIT", quantity=trade.targetQtys[i],
                 #                                  price=trade.targetPointss[i])
                 ret = dict()
                 ret['status'] = 'success'
@@ -538,7 +534,7 @@ def updateTargets(targets: Dict[str, float]):
     #
     #         # change limit order price if already in place
     #         if trade.order_type == "LMT":
-    #             ret = dhan_api.Dhan.modify_order(order_id=trade.orderNumber, order_type="LIMIT", quantity=trade.qty,
+    #             ret = dhan_api.modify_order(order_id=trade.orderNumber, order_type="LIMIT", quantity=trade.qty,
     #                                              price=trade.targetPoints)
     #
     #             logger.info(

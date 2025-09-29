@@ -4,21 +4,96 @@ from conf.logging_config import logger
 from models.partialTrade import PartialTrade
 # from services.riskManagement import riskManagementobj
 from conf import websocketService
+from conf.config import get_date_folders
 # from conf.shoonyaWebsocket import ltps
 # from models.TradeManager import tradeManager2
 from datetime import datetime
 # from conf.config import config
 
 class OrderManagement:
-    def __init__(self,  dhan_api, shoonya_api , order_folder, nifty_fut_token, riskManagementobj, tradeManager, decisionPoints, misc):
-        self.decisionPoints = decisionPoints
-        self.dhan_api = dhan_api
-        self.shoonya_api = shoonya_api
-        self.order_folder = order_folder
-        self.nifty_fut_token = nifty_fut_token
-        self.riskManagementobj = riskManagementobj
-        self.tradeManager = tradeManager
-        self.misc = misc
+    # def __init__(self, config,  dhan_api, shoonya_api , order_folder, nifty_fut_token, riskManagementobj, tradeManager, decisionPoints, misc):
+    def __init__(self, di_container):
+        self.di_container = di_container
+
+        # Get only essential dependencies immediately
+        config = self.di_container.get('config')
+        self.order_folder = get_date_folders()['order']
+        self.nifty_fut_token = config['nifty_fut_token']
+
+        self._dhan_websocket = None
+        self._shoonya_websocket = None
+
+        self._dhan_api = None
+        self._dhan_helper = None
+        self._trade_manager = None
+        self._decision_points = None
+        self._misc = None
+        self._risk_management = None
+
+        # self.dhan_websocket = self.di_container.get('dhan_websocket')
+        # config = self.di_container.get('config')
+        # dhan_api = self.di_container.get('dhan_api')
+        # trade_manager = self.di_container.get('trade_manager')
+        # decision_points = self.di_container.get('decision_points_manager')
+        # misc = self.di_container.get('misc')
+        # risk_management = self.di_container.get('risk_management_service')
+        # self.decisionPoints = decision_points
+        # self.dhan_api = dhan_api
+        # self.shoonya_api = shoonya_api
+        # self.order_folder = get_date_folders()['order']
+        # self.nifty_fut_token = config['nifty_fut_token']
+        # self.riskManagementobj = risk_management
+        # self.tradeManager = trade_manager
+        # self.misc = misc
+
+    @property
+    def dhan_websocket(self):
+        if self._dhan_websocket is None:
+            self._dhan_websocket = self.di_container.get('dhan_websocket')
+        return self._dhan_websocket
+
+    @property
+    def shoonya_websocket(self):
+        if self._shoonya_websocket is None:
+            self._shoonya_websocket = self.di_container.get('shoonya_websocket')
+        return self._shoonya_websocket
+
+    @property
+    def dhan_api(self):
+        if self._dhan_api is None:
+            self._dhan_api = self.di_container.get('dhan_api')
+        return self._dhan_api
+
+    @property
+    def dhan_helper(self):
+        if self._dhan_helper is None:
+            self._dhan_helper = self.di_container.get('dhan_helper')
+        return self._dhan_helper
+
+    @property
+    def tradeManager(self):
+        if self._trade_manager is None:
+            self._trade_manager = self.di_container.get('trade_manager')
+        return self._trade_manager
+
+    @property
+    def decisionPoints(self):
+        if self._decision_points is None:
+            self._decision_points = self.di_container.get('decision_points_manager')
+        return self._decision_points
+
+    @property
+    def misc(self):
+        if self._misc is None:
+            self._misc = self.di_container.get('misc')
+        return self._misc
+
+    @property
+    def riskManagementobj(self):
+        if self._risk_management is None:
+            self._risk_management = self.di_container.get('risk_management_service')
+        return self._risk_management
+
 
     def buyOrder(self, token, order_type, price, bof):
 
@@ -29,7 +104,7 @@ class OrderManagement:
                 websocketService.send_toast("Wrong trade", "Another trade already open")
                 return
 
-            tsym = self.dhan_api.get_trading_symbol(int(token))
+            tsym = self.dhan_helper.get_trading_symbol(int(token))
             optionType = tsym.split(' ')[-1]
 
             triggerPrice = 0.0
@@ -81,7 +156,7 @@ class OrderManagement:
             # qty = self.riskManagementobj.getQty(price)
             qty = self.misc.get_buy_qty(tsym)
 
-            res = self.dhan_api.Dhan.place_order(security_id=token, exchange_segment="NSE_FNO", transaction_type="BUY",
+            res = self.dhan_api.place_order(security_id=token, exchange_segment="NSE_FNO", transaction_type="BUY",
                         quantity=qty, order_type='LIMIT', product_type="INTRADAY", price=price, trigger_price=triggerPrice)
 
             logger.info(f"Manual buy order status")
@@ -98,7 +173,8 @@ class OrderManagement:
                 # )
                 # logger.info(trade.__str__())
                 # tradeManager.setTrade(trade)
-                self.shoonya_api.subscribe("NFO|" + str(token))
+                # self.shoonya_api.subscribe("NFO|" + str(token))
+                self.shoonya_websocket.subscribe(token)
 
             if res['status'] == 'failure':
                 websocketService.send_toast("Order failed", res['remarks']['error_message'])
@@ -137,10 +213,10 @@ class OrderManagement:
         if partialTrades is None:
             logger.info(f"no active trades, probably a limit order")
             try:
-                order = self.dhan_api.get_order_detail(orderId)
+                order = self.dhan_helper.get_order_detail(orderId)
                 if order["orderType"] == "LIMIT":
                     logger.info(f"changing limit order of orderId {orderId} to price {newPrice} ")
-                    res = self.dhan_api.Dhan.modify_order(order_id=orderId, order_type="LIMIT", leg_name="ENTRY_LEG",quantity=order["quantity"],
+                    res = self.dhan_api.modify_order(order_id=orderId, order_type="LIMIT", leg_name="ENTRY_LEG",quantity=order["quantity"],
                                                price=newPrice, trigger_price=0, disclosed_quantity=0, validity='DAY')
                     logger.info(f"{res}")
                     # tradeManager['entryPrice'] = newPrice
@@ -153,7 +229,7 @@ class OrderManagement:
                 try:
                     for trade in partialTrades.values():
                         logger.info(f"changing SL price of {trade.name} from {trade.slPrice} to {newPrice}")
-                        res = self.dhan_api.Dhan.modify_order(order_id=trade.orderNumber, order_type="STOP_LOSS", leg_name="ENTRY_LEG",
+                        res = self.dhan_api.modify_order(order_id=trade.orderNumber, order_type="STOP_LOSS", leg_name="ENTRY_LEG",
                                                    quantity=trade.qty,
                                                    price=newPrice - 0.3, trigger_price=newPrice,
                                                    disclosed_quantity=0, validity='DAY')
@@ -166,11 +242,11 @@ class OrderManagement:
 
     def modifyActiveOrderOld(self, orderId, newPrice):
 
-        order = self.dhan_api.get_order_detail(orderId)
+        order = self.dhan_helper.get_order_detail(orderId)
 
         if order["orderType"] == "LIMIT":
             try:
-                self.dhan_api.Dhan.modify_order(order_id=orderId, order_type="LIMIT", leg_name="ENTRY_LEG",quantity=order["quantity"],
+                self.dhan_api.modify_order(order_id=orderId, order_type="LIMIT", leg_name="ENTRY_LEG",quantity=order["quantity"],
                                            price=newPrice, trigger_price=0, disclosed_quantity=0, validity='DAY')
             except Exception as e:
                 logger.error("failed to modify order with error {}".format(e))
@@ -185,7 +261,7 @@ class OrderManagement:
                 # ret = dhan_api.Dhan.modify_order(order_id=trade.orderNumber, order_type="LIMIT", leg_name="ENTRY_LEG",
                 #                                  quantity=trade.qty, price=trade.targetPrice, trigger_price=0, disclosed_quantity=0, validity='DAY')
 
-            self.dhan_api.Dhan.modify_order(order_id=orderId, order_type="STOP_LOSS", leg_name="ENTRY_LEG",quantity=order["quantity"],
+            self.dhan_api.modify_order(order_id=orderId, order_type="STOP_LOSS", leg_name="ENTRY_LEG",quantity=order["quantity"],
                                        price=newPrice, trigger_price=newPrice + type_modifier * 0.2, disclosed_quantity=0, validity='DAY')
 
 

@@ -69,7 +69,7 @@ class ConnectionManager:
                     next_message = self.queue.get()
                     if next_message:
                         await self.send_message(next_message)
-                        logger.debug(f"Sent message: {next_message}")
+                        # logger.debug(f"Sent message: {next_message}")
                 else:
                     # No messages in queue, sleep briefly to avoid CPU spinning
                     await asyncio.sleep(0.01)

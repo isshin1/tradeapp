@@ -20,5 +20,6 @@ pandas
 redis
 mibian
 apscheduler
-dhanhq
+dhanhq==2.1.0
+Dhan-Tradehull
 Dependencies/NorenRestApi-0.0.30-py2.py3-none-any.whl

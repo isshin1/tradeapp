@@ -1,5 +1,7 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends
-from conf.config import riskManagement
+from core.dependencies import get_risk_management, get_dhan_websocket# from conf.config import riskManagement
 from core.auth import role_checker  # import role_checker from main.py
 # from services.pihole import pihole
 router = APIRouter()
@@ -7,17 +9,23 @@ router = APIRouter()
 
 
 @router.get("/api/pnl")
-async def pnl(check_roles: None = Depends(role_checker(["ROLE_ADMIN"]))):
-    return riskManagement.pnl
+async def pnl(
+        risk_service: Annotated[object, Depends(get_risk_management)],
+        check_roles: None = Depends(role_checker(["ROLE_ADMIN"]))):
+    return risk_service.pnl
 
 @router.get("/api/killswitch")
-async def killswitch(check_roles: None = Depends(role_checker(["ROLE_ADMIN"]))):
-    return riskManagement.endSession()
+async def killswitch(
+        risk_service: Annotated[object, Depends(get_risk_management)],
+        check_roles: None = Depends(role_checker(["ROLE_ADMIN"]))):
+    return risk_service.endSession()
 
 
 @router.post("/api/endSession")
-async def endSession(check_roles: None = Depends(role_checker(["ROLE_ADMIN"]))):
-    return riskManagement.endSession(force=False)
+async def endSession(
+        risk_service: Annotated[object, Depends(get_risk_management)],
+        check_roles: None = Depends(role_checker(["ROLE_ADMIN"]))):
+    return risk_service.endSession(force=False)
 #
 # @router.get("/api/enablePihole")
 # async def enablePihole():
