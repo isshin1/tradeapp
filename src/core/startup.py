@@ -96,6 +96,8 @@ class AppInitializer:
             totp = pyotp.TOTP(cred['totp_key']).now()
             ret = shoonya_api.login(userid=cred['user'], password=cred['pwd'], twoFA=totp,
                                     vendor_code=cred['vc'], api_secret=cred['api_key'], imei=cred['imei'])
+            if ret is None:
+                raise Exception(f"Shoonya Login failed")
             logger.info("Shoonya API client created successfully")
             return shoonya_api
         except Exception as e:
@@ -104,8 +106,21 @@ class AppInitializer:
 
     def _create_dhan_api(self, dhan_context):
         """Factory method to create Dhan API client"""
+
+        def checkTokenValidity( token):
+            url = 'https://api.dhan.co/v2/profile'
+            headers = {'access-token': token}
+
+            response = requests.get(url, headers=headers)
+            res = response.json()
+            if 'errorType' in res:
+                logger.error("Token is invalid")
+                raise ValueError("access token is invalid")
+            logger.info(response.status_code)
+
         try:
             dhan_api = dhanhq(dhan_context)
+            checkTokenValidity(dhan_context.access_token)
             logger.info("Dhan API client created successfully")
             return dhan_api
         except Exception as e:
@@ -138,11 +153,16 @@ class AppInitializer:
             logger.error(f"Failed to create Dhan helper client: {e}")
             raise
         
-    def setup_dhan_services(self, client_id: str, token_id:str, app_id:str, app_secret:str):
+    def setup_dhan_services(self, config):
         """Setup Dhan context and API client"""
         try:
             # Create and store Dhan context
-            access_token = self._get_dhan_access_token(app_id, app_secret, token_id)
+            client_id = str(config['client_id'])
+            app_id = str(config['app_id'])
+            app_secret = str(config['app_secret'])
+            token_id = str(config['token_id'])
+            access_token = str(config.get('access_token')) or self._get_dhan_access_token(app_id, app_secret, token_id)
+
             self.dhan_context = self._create_dhan_context(client_id, access_token)
             self.dhan_api = self._create_dhan_api(self.dhan_context)
 
@@ -269,19 +289,19 @@ class AppInitializer:
 
 
     def _get_config(self):
-        dhan_helper = self.di_container.get('dhan_helper')
-
-        # config['demo_mode'] = True
+        # dhan_helper = self.di_container.get('dhan_helper')
 
         config['nifty_symbol'] = 'Nifty 50'
         config['nifty_token'] = '26000'
 
         misc = self.di_container.get('misc')
-        nifty_monthly_expiry = dhan_helper.get_monthly_expiry('13', "IDX_I", 0)
-        # nifty_monthly_expiry = misc.get_nse_monthly_expiry("NIFTY", 0)
+        # nifty_monthly_expiry = dhan_helper.get_monthly_expiry('13', "IDX_I", 0)
+        nifty_monthly_expiry = misc.get_nse_monthly_expiry(symbol="NIFTY", exchange='NFO', instrument = 'FUTIDX')
+
         nifty_fut_symbol = "NIFTY" + datetime.strftime(nifty_monthly_expiry, " %b ").upper() + "FUT"
+        nifty_fut_symbol_shoonya = "NIFTY" + nifty_monthly_expiry.strftime("%d%b%y").upper() + "F"
         config['nifty_fut_symbol'] = nifty_fut_symbol
-        config['nifty_fut_token'] = str(dhan_helper.get_token(nifty_fut_symbol))
+        config['nifty_fut_token'] = str(misc.getToken(tsym = nifty_fut_symbol_shoonya, exchange = 'NFO' ))
         config['nifty_monthly_expiry'] = nifty_monthly_expiry
 
 
@@ -351,17 +371,8 @@ class AppInitializer:
             self.setup_directories()
             self.setup_python_path()
 
-
-            client_id = str(config['dhan']['client_id'])
-            # access_token = str(config['dhan']['access_token'])
-            token_id = str(config['dhan']['token_id'])
-            app_id = str(config['dhan']['app_id'])
-            app_secret = str(config['dhan']['app_secret'])
-
-            self.setup_dhan_services(client_id,  token_id, app_id, app_secret)
+            self.setup_dhan_services(config['dhan'])
             self.setup_shoonya_services(config['shoonya'])
-
-
 
             # Register all dependencies
             self.register_dependencies(config)

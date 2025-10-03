@@ -5,6 +5,7 @@ import os, sys, time
 from conf.config import BASE_DIR
 import pandas as pd
 from datetime import datetime
+import traceback
 
 class DhanHelper:
     def __init__(self, dhan_api):
@@ -267,4 +268,81 @@ class DhanHelper:
         except Exception as e:
             print(f"Exception at getting Expiry list as {e}")
             return list()
-        
+    def cancel_all_orders(self) -> dict:
+        try:
+            order_details = dict()
+            product_detail = {'MIS': self.dhan_api.INTRA, 'MARGIN': self.dhan_api.MARGIN, 'MTF': self.dhan_api.MTF,
+                              'CO': self.dhan_api.CO, 'BO': self.dhan_api.BO, 'CNC': self.dhan_api.CNC}
+            product = product_detail['MIS']
+            time.sleep(1)
+            data = self.dhan_api.get_order_list()["data"]
+            if data is None or len(data) == 0:
+                return order_details
+            orders = pd.DataFrame(data)
+            if orders.empty:
+                return order_details
+            trigger_pending_orders = orders.loc[
+                (orders['orderStatus'] == 'PENDING') & (orders['productType'] == product)]
+            open_orders = orders.loc[(orders['orderStatus'] == 'TRANSIT') & (orders['productType'] == product)]
+            for index, row in trigger_pending_orders.iterrows():
+                response = self.dhan_api.cancel_order(row['orderId'])
+
+            for index, row in open_orders.iterrows():
+                response = self.dhan_api.cancel_order(row['orderId'])
+            position_dict = self.dhan_api.get_positions()["data"]
+            positions_df = pd.DataFrame(position_dict)
+            if positions_df.empty:
+                return order_details
+            positions_df['netQty'] = positions_df['netQty'].astype(int)
+            bought = positions_df.loc[(positions_df['netQty'] > 0) & (positions_df["productType"] == product)]
+            sold = positions_df.loc[(positions_df['netQty'] < 0) & (positions_df['productType'] == product)]
+
+            for index, row in bought.iterrows():
+                qty = int(row["netQty"])
+                order = self.dhan_api.place_order(security_id=str(row["securityId"]),
+                                              exchange_segment=row["exchangeSegment"],
+                                              transaction_type=self.dhan_api.SELL, quantity=qty,
+                                              order_type=self.dhan_api.MARKET, product_type=row["productType"], price=0,
+                                              trigger_price=0)
+
+                tradingsymbol = row['tradingSymbol']
+                sell_order_id = order["data"]["orderId"]
+                order_details[tradingsymbol] = dict({'orderid': sell_order_id, 'price': 0})
+                time.sleep(0.5)
+
+            for index, row in sold.iterrows():
+                qty = int(row["netQty"]) * -1
+                order = self.dhan_api.place_order(security_id=str(row["securityId"]),
+                                              exchange_segment=row["exchangeSegment"],
+                                              transaction_type=self.dhan_api.BUY, quantity=qty,
+                                              order_type=self.dhan_api.MARKET, product_type=row["productType"], price=0,
+                                              trigger_price=0)
+                tradingsymbol = row['tradingSymbol']
+                buy_order_id = order["data"]["orderId"]
+                order_details[tradingsymbol] = dict({'orderid': buy_order_id, 'price': 0})
+                time.sleep(1)
+            if len(order_details) != 0:
+                _, order_price = self.order_report()
+                for key, value in order_details.items():
+                    orderid = str(value['orderid'])
+                    if orderid in order_price:
+                        order_details[key]['price'] = order_price[orderid]
+            return order_details
+        except Exception as e:
+            print(e)
+            print("problem close all trades")
+            logger.exception("problem close all trades")
+            traceback.print_exc()
+
+    def kill_switch(self, action):
+        try:
+            active = {'ON': 'ACTIVATE', 'OFF': 'DEACTIVATE'}
+            current_action = active[action.upper()]
+
+            killswitch_response = self.dhan_api.kill_switch(current_action)
+            if 'killSwitchStatus' in killswitch_response['data'].keys():
+                return killswitch_response['data']['killSwitchStatus']
+            else:
+                return killswitch_response
+        except Exception as e:
+            logger.exception(f"Error at Kill switch as {e}")

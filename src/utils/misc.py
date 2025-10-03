@@ -10,6 +10,7 @@ import requests
 import nsepythonserver as nsp
 import time
 
+from conf.logging_config import logger
 
 sys.path.append("/home/kushy/Syncthing/Projects/Shoonya/tradeParser/")
 import mibian
@@ -25,13 +26,15 @@ class Misc:
         self.BASE_DIR = BASE_DIR
         self.nfo_file =  BASE_DIR + '/Dependencies/' + 'NFO_' + str(current_date) + '.csv'
         self.bfo_file =  BASE_DIR + '/Dependencies/' + 'BFO_' + str(current_date) + '.csv'
-        self.nse_file =  BASE_DIR + '/Dependencies/' + str(current_date) + '.csv'
-        self.bse_file =  BASE_DIR + '/Dependencies/' + str(current_date) + '.csv'
+        self.nse_file =  BASE_DIR + '/Dependencies/' + 'NSE_' + str(current_date) + '.csv'
+        self.bse_file =  BASE_DIR + '/Dependencies/' + 'BSE_' + str(current_date) + '.csv'
 
         self.fileList  = [{"link":"https://api.shoonya.com/NFO_symbols.txt.zip", "name": "NFO_symbols.txt", "newName":self.nfo_file},
                           {"link":"https://api.shoonya.com/BFO_symbols.txt.zip", "name": "BFO_symbols.txt", "newName": self.bfo_file},
                           {"link":"https://api.shoonya.com/NSE_symbols.txt.zip", "name": "NSE_symbols.txt", "newName":self.nse_file},
                           {"link":"https://api.shoonya.com/BSE_symbols.txt.zip", "name": "BSE_symbols.txt", "newName":self.bse_file}]
+        self.instrument_df = dict()
+
         self.get_instrument_files()
         self.config = config
         # self.getFutDf()  #TODO: error on start of a new month, file not there
@@ -47,9 +50,7 @@ class Misc:
 
 
     def get_instrument_files(self):
-        global instrument_df
         current_date = time.strftime("%Y-%m-%d")
-        expected_file = 'NFO_ ' + str(current_date) + '.csv'
         for item in os.listdir(f"{self.BASE_DIR}/Dependencies"):
             path = os.path.join(item)
 
@@ -62,18 +63,11 @@ class Misc:
 
         for expected_file in self.fileList:
             link, name, newName = expected_file['link'], expected_file['name'], expected_file['newName']
-            # this will fetch instrument_df file from Dhan
+            exchange = name[0:3]
             if not os.path.isfile(newName ):
-
-                print("This BOT Is Picking New File From Shoonya")
+                print(f"Downloading {exchange} File From Shoonya")
                 self.get_symbols_file(link, name,newName)
-
-            # self.get_symbols_file("https://api.shoonya.com/NFO_symbols.txt.zip", "NFO_symbols.txt","NFO_"+ str(current_date) + '.csv')
-            # self.get_symbols_file("https://api.shoonya.com/NSE_symbols.txt.zip", "NSE_symbols.txt","NSE_"+ str(current_date) + '.csv')
-            # self.get_symbols_file("https://api.shoonya.com/BFO_symbols.txt.zip", "BFO_symbols.txt","BFO_"+ str(current_date) + '.csv')
-            # self.get_symbols_file("https://api.shoonya.com/BSE_symbols.txt.zip", "BSE_symbols.txt","BSE_"+ str(current_date) + '.csv')
-
-        # return instrument_df
+            self.instrument_df[exchange] = pd.read_csv(newName)
 
     def get_symbols_file(self, url, filename, newname):
         response = requests.get(url)
@@ -169,16 +163,22 @@ class Misc:
             expiry_date = expiry_dates[week+1]
         return expiry_date
 
+    def get_df(self, exchange):
+        try:
+            return self.instrument_df[exchange]
+        except KeyError:
+            return None
 
-    def get_nse_monthly_expiry(self, symbol, month=0):
-        df = pd.read_csv(self.nfo_file)
+    def get_nse_monthly_expiry(self, symbol, exchange, instrument,  month=0):
+        df = self.get_df(exchange)
+        # df = pd.read_csv(self.nfo_file)
 
         df_index = df[df.Symbol == symbol]
         df_index['Expiry'] = df_index['Expiry'].apply(lambda x: datetime.strptime(x.title(), '%d-%b-%Y'))
         df_index = df_index.sort_values(by='Expiry')
-        expiry_dates = df_index['Expiry'].unique()
-        # expiry_dates_fut = df_index[df_index['Instrument'] == 'FUTIDX']['Expiry'].unique()
-        expiry_date = expiry_dates_fut[month]
+        # expiry_dates = df_index['Expiry'].unique()
+        expiry_dates = df_index[df_index['Instrument'] == instrument]['Expiry'].unique()
+        expiry_date = expiry_dates[month]
         expiry_date = datetime.fromtimestamp(expiry_date.timestamp())
         return expiry_date
 
@@ -262,8 +262,8 @@ class Misc:
         return
 
 
-    def getToken(self, tsym):
-        df = pd.read_csv(self.nfo_file)
+    def getToken(self, tsym, exchange):
+        df = self.get_df(exchange)
         df = df[df.TradingSymbol == tsym]
         if not df.empty:
             return str(df.iloc[0]['Token'])

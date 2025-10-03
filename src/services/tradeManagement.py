@@ -204,7 +204,7 @@ class TradeManagement:
             #     trade.qty, "STOP_LOSS", trade.slPrice, trade.slPrice + trade.diff
             # )
 
-            logger.info(f"{mode_prefix}placing sl order for {trade.name} and token {trade.token}")
+            # logger.info(f"{mode_prefix}placing sl order for {trade.name} and token {trade.token}")
 
             res = api.place_order(security_id=trade.token, exchange_segment="NSE_FNO", transaction_type="SELL",
                         quantity=trade.qty, order_type="STOP_LOSS", product_type=trade.prd, price=trade.slPrice - trade.diff, trigger_price=trade.slPrice )
@@ -217,7 +217,7 @@ class TradeManagement:
                 trade.status = 1
                 trade.orderType = "STOP_LOSS"
 
-                logger.info(f"{mode_prefix}placed sl at {trade.slPrice} for a fresh order with order number {orderNumber}")
+                logger.info(f"{mode_prefix}{trade.name} placed sl at {trade.slPrice} for a fresh order with order number {orderNumber}")
                 logger.info(trade.__str__())
 
             else:
@@ -226,7 +226,7 @@ class TradeManagement:
                                     trade.token, "NSE_FNO", "SELL" ,trade.qty, "STOP_LOSS", trade.prd,
                                     trade.slPrice - trade.diff, trade.slPrice
                 )
-                logger.error(f"{mode_prefix}error in placing sl order {res['remarks']} ")
+                logger.error(f"{mode_prefix}{trade.name} error in placing sl order {res['remarks']} ")
 
             self.tradeManager.updatePartialTrade(trade)
         except Exception as e:
@@ -561,7 +561,7 @@ class TradeManagement:
                 mode_prefix = "DEMO: " if self.demo_mode else ""
                 logger.info(f"{mode_prefix}starting a fresh trade at {datetime.now()} of token {token}")
                 self.createTrade(token, order_update)
-                self.decisionPoints.updateDecisionPoints(self.tradeManager.ltps[self.nifty_fut_token], order_update['optType'])
+                # self.decisionPoints.updateDecisionPoints(self.tradeManager.ltps[self.nifty_fut_token], order_update['optType'])
         except Exception as e:
             logger.error(f"Error in handling buy order {e}")
 

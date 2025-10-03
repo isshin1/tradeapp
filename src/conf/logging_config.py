@@ -88,11 +88,13 @@ def setup_logging_programmatic():
             'disable_existing_loggers': False,
             'formatters': {
                 'detailed': {
+                    # Updated format to include filename and line number
                     'format': '[%(asctime)s] [%(levelname)s] (%(filename)s:%(lineno)d) %(funcName)s() - %(message)s',
                     'datefmt': '%Y-%m-%d %H:%M:%S'
                 },
                 'simple': {
-                    'format': '[%(levelname)s] %(message)s'
+                    # Also include filename and line number in console output
+                    'format': '[%(levelname)s] (%(filename)s:%(lineno)d) %(message)s'
                 }
             },
             'handlers': {
@@ -113,8 +115,18 @@ def setup_logging_programmatic():
             },
             'loggers': {
                 '': {  # Root logger
-                    'level': 'DEBUG',
-                    'handlers': ['console', 'file'],  # Only console and single file
+                    'level': 'INFO',  # Changed from 'DEBUG'
+                    'handlers': ['console', 'file'],
+                    'propagate': False
+                },
+                'urllib3': {
+                    'level': 'WARNING',
+                    'handlers': ['console', 'file'],
+                    'propagate': False
+                },
+                'urllib3.connectionpool': {
+                    'level': 'WARNING',
+                    'handlers': ['console', 'file'],
                     'propagate': False
                 }
             }

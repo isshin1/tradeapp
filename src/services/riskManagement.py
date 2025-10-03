@@ -84,8 +84,8 @@ class RiskManagement:
 
     def endSession(self, force=True):
         # return
-        if not self.is_trading_session():
-            return
+        # if not self.is_trading_session():
+        #     return
 
         # start_time = time(9, 0)
         # end_time = time(15, 30)
@@ -95,11 +95,11 @@ class RiskManagement:
 
         self.update()
         logger.info(f"turning killswitch on with trades {self.tradeCount} and pnl {self.pnl}")
-        self.dhan_api.cancel_all_orders()
-        self.dhan_api.kill_switch('ON')
+        self.dhan_helper.cancel_all_orders()
+        self.dhan_helper.kill_switch('ON')
         if force:
-            self.dhan_api.kill_switch('OFF')
-            return self.dhan_api.kill_switch('ON')
+            self.dhan_helper.kill_switch('OFF')
+            return self.dhan_helper.kill_switch('ON')
 
     def killswitch(self):
         if self.maxLossCrossed():
@@ -146,7 +146,7 @@ class RiskManagement:
         self.scheduler = threading.Timer(60, self.periodic_check)
         self.scheduler.start()
 
-    def   wait_timer(self):
+    def wait_timer(self):
         diff = (datetime.now() - self.lastTradeTime).total_seconds()
         if diff < 15* 60:
             seconds_left = int(15*60 - diff)
