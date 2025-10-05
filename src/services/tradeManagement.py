@@ -550,6 +550,8 @@ class TradeManagement:
                 logger.info(f"{trade2}")
 
             self.shoonya_websocket.subscribe(token)
+            websocketService.update_targets(target1, target2)
+
         except Exception as e:
             logger.error(f"Error in creating trade  {e}")
 
@@ -558,6 +560,9 @@ class TradeManagement:
     def handle_buy_order(self, token, order_update):
         try:
             if not self.tradeManager.isTradeActive(token):
+                if 'super' in order_update['remarks'].lower() :
+                    logger.info(f"super order, skipping")
+                    return
                 mode_prefix = "DEMO: " if self.demo_mode else ""
                 logger.info(f"{mode_prefix}starting a fresh trade at {datetime.now()} of token {token}")
                 self.createTrade(token, order_update)
@@ -707,7 +712,8 @@ class TradeManagement:
         mode_prefix = "DEMO: " if self.demo_mode else ""
         api = self._get_api()
 
-        logger.info(f"{mode_prefix}targets are {targets['t1']}, {targets['t2']}")
+        t1 , t2 = targets['t1'], targets['t2']
+        logger.info(f"{mode_prefix}targets are {t1}, {t2}")
 
         if not self.tradeManager.isTradeActive():
             logger.info(f"{mode_prefix}trade is not active")
@@ -728,22 +734,24 @@ class TradeManagement:
 
                 # update target based on name
                 if trade.name == "trade1":
-                    points = targets.get("t1")
-                    if points >= 10:
-                        trade.targetPoints = points
+                    if t1 > 10:
+                        trade.targetPoints = t1
                         logger.info(f"{mode_prefix}{trade.name} target changed to {trade.targetPoints}")
                         trade.targetModified = True
                     else:
                         logger.info(f"{mode_prefix}not chaging t1 target below 20 points")
-                # if trade.name == "trade2":
-                #     points = targets.get("t2")
-                #     if points >= 20:
-                #         trade.targetPoints = targets.get("t2")
-                #         logger.info(f"{trade.name} target changed to {trade.targetPoints}")
-                #         trade.targetModified = True
-                #     else:
-                #         logger.info("not chaging t2 target below 20 points")
+                        send_toast("Small Target", "Trade Target is smaller than 10")
+                        return
 
+                if trade.name == "trade2":
+                    if t2 > 10:
+                        trade.targetPoints = t2
+                        logger.info(f"{trade.name} target changed to {trade.targetPoints}")
+                        trade.targetModified = True
+                    else:
+                        logger.info("not chaging t2 target below 20 points")
+                        send_toast("Small Target", "Trade Target is smaller than 10")
+                        return
                 # if trade.name == "t3":
                 #     trade.set_target_price(targets.get("t3") + entry_price)
 
@@ -766,6 +774,7 @@ class TradeManagement:
                     logger.info(ret)
         logger.info(f"{mode_prefix}targets modified")
         websocketService.send_toast(f"{mode_prefix}Targets Update request", "Targets Updated")
+        websocketService.update_targets(t1, t2)
         return 0
 
 

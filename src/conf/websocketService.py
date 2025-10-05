@@ -148,6 +148,14 @@ def update_timer(timer):
     }
     send_message(json.dumps(res))
 
+def update_targets(target1, target2):
+    res = {
+        "type": "target",
+        "t1": target1,
+        "t2": target2
+    }
+    send_message(json.dumps(res))
+
 # Called for every client connecting (after handshake)
 def new_client(client, server):
     print(f"New client connected and was given id {client['id']}")

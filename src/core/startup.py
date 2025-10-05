@@ -22,7 +22,8 @@ from services.optionUpdate import OptionUpdate
 from services.orderManagement import OrderManagement
 from services.riskManagement import RiskManagement
 from services.tradeManagement import TradeManagement
-from utils.dhanHelper import DhanHelper
+from utils.dhanHelper import DhanHelper, DhanAuthAutomation
+from utils.shoonyaHelper import ShoonyaHelper
 from utils.misc import Misc
 from utils.shoonyaApiHelper import ShoonyaApiPy
 
@@ -104,6 +105,17 @@ class AppInitializer:
             logger.error(f"Failed to create Dhan API client: {e}")
             raise
 
+    def _create_shoonya_helper(self):
+        """Factory method to create Dhan API client"""
+        try:
+            shoonya_api = self.di_container.get('shoonya_api')
+            dhanHelper = ShoonyaHelper(shoonya_api)
+            logger.info("Shoonya Helper client created successfully")
+            return dhanHelper
+        except Exception as e:
+            logger.error(f"Failed to create Shoonya helper client: {e}")
+            raise
+
     def _create_dhan_api(self, dhan_context):
         """Factory method to create Dhan API client"""
 
@@ -127,8 +139,12 @@ class AppInitializer:
             logger.error(f"Failed to create Dhan API client: {e}")
             raise
 
-    def _get_dhan_access_token(self, app_id: str, app_secret: str, token_id: str):
+    def _get_dhan_access_token(self, config, token_id):
         """Get Dhan access token using client credentials flow"""
+
+        app_id = str(config['app_id'])
+        app_secret = str(config['app_secret'])
+
         try:
             url = f"https://auth.dhan.co/app/consumeApp-consent?tokenId={token_id}"
             headers = {
@@ -152,17 +168,50 @@ class AppInitializer:
         except Exception as e:
             logger.error(f"Failed to create Dhan helper client: {e}")
             raise
-        
+
+    def _get_concent_id(self, client_id, app_id, app_secret):
+        url = f"https://auth.dhan.co/app/generate-consent?client_id={client_id}"
+
+        headers = {
+            "app_id": app_id,
+            "app_secret": app_secret
+        }
+
+        response = requests.post(url, headers=headers)
+
+        consentAppId = response.json()['consentAppId']
+        return consentAppId
+
+    def _get_dhan_access_token_id(self, config):
+
+        client_id = str(config['client_id'])
+        app_id = str(config['app_id'])
+        app_secret = str(config['app_secret'])
+        phone_number = str(config['phone_number'])
+        totp_secret = str(config['totp_secret'])
+        pin = str(config['pin'])
+
+        consentAppId = self._get_concent_id(client_id, app_id, app_secret)
+        automation = DhanAuthAutomation(headless=True)
+        token_id = automation.get_auth_token(
+            login_url=f"https://auth.dhan.co/login/consentApp-login?consentAppId={consentAppId}",
+            mobile_number=phone_number,
+            totp_secret=totp_secret,
+            pin=pin
+        )
+        return token_id
+
     def setup_dhan_services(self, config):
         """Setup Dhan context and API client"""
         try:
             # Create and store Dhan context
             client_id = str(config['client_id'])
-            app_id = str(config['app_id'])
-            app_secret = str(config['app_secret'])
-            token_id = str(config['token_id'])
-            access_token = str(config.get('access_token')) or self._get_dhan_access_token(app_id, app_secret, token_id)
+            # access_token = str(config.get('access_token')) or self._get_dhan_access_token(app_id, app_secret, token_id)
+            token_id = self._get_dhan_access_token_id(config)
 
+            access_token = str(config.get('access_token', ''))
+            if access_token == '':
+                access_token = self._get_dhan_access_token(config, token_id)
             self.dhan_context = self._create_dhan_context(client_id, access_token)
             self.dhan_api = self._create_dhan_api(self.dhan_context)
 
@@ -181,6 +230,10 @@ class AppInitializer:
     def setup_shoonya_services(self, cred):
         self.shoonya_api = self._create_shoonya_api(cred)
         self.di_container.register_singleton('shoonya_api', self.shoonya_api)
+
+        self.shoonya_helper = self._create_shoonya_helper()
+        self.di_container.register_singleton('shoonya_helper', self.shoonya_helper)
+        # self.shoonya_helper.killswitch()
         logger.info("Shoonya services setup completed and registered in DI container")
 
     def _create_database_connection(self, database_url: str):

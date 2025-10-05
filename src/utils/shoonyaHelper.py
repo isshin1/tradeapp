@@ -1,4 +1,3 @@
-from shared_libraries.api_helper import ShoonyaApiPy
 
 import logging
 import json
@@ -12,9 +11,7 @@ import math
 import math
 from scipy.stats import norm
 
-sys.path.append('/home/kushy/Syncthing/Projects/Shoonya/')
-from shared_libraries.helper_scripts import consulHelper, misc
-from shared_libraries.helper_scripts.mibianLib import mibian
+
 
 apkversion = "1.0.0"
 
@@ -31,6 +28,22 @@ apkversion = "1.0.0"
 # # ret = api.logout()
 # # ret = 'x'
 
+
+class ShoonyaHelper:
+    def __init__(self, shoonya_api):
+        self.api = shoonya_api
+
+    def killswitch(self):
+        self.api.freeze_account()
+        self.api.block_account()
+        # POST 	https://trade.shoonya.com/NorenWClientWeb/FreezeAccount
+        # jData = {"uid": "FA125898", "actid": "FA125898",
+        #          "type": "1"} & jKey = ba6bfe60755769bffc7d3df9571860d4cdf0ddbbb3e79c5067df336a24e78243
+        # stat = "OK"
+        #
+        #     POST https://trade.shoonya.com/NorenWClientWeb/BlockAcct
+        # jData = {"uid": "FA125898"} & jKey = ba6bfe60755769bffc7d3df9571860d4cdf0ddbbb3e79c5067df336a24e78243
+        # stat = "OK"
 
 def checkMaxLoss(pnl):
     print(f'checking max loss with pnl {pnl}')

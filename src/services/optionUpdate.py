@@ -27,10 +27,10 @@ class OptionUpdate:
         # risk_management = self.di_container.get('risk_management_service')
         trade_management = self.di_container.get('trade_management_service')
         self.delta = self.config['intraday']['delta']
-        self.callPrice = 20000
-        self.putPrice = 20000
+        self.callPrice = None
+        self.putPrice = None
         self.expiry_date = self.config['nifty_monthly_expiry']
-        self.subscribedTokens = ['13']
+        self.subscribedTokens = ['26000']
         # self.ltp = self.getLtp()
         # self.getTokens(self.ltp)
         self.init = None
@@ -87,10 +87,10 @@ class OptionUpdate:
         if self.trade_manager.isTradeActive():
             return
 
-        if spot_price == 0:
-            spot_price = self.trade_manager.ltps[self.config['nifty_token']]
-        else:
-            spot_price = round(spot_price / 50) * 50
+        # if spot_price == 0:
+        #     spot_price = self.trade_manager.ltps[self.config['nifty_token']]
+        # else:
+        # spot_price = round(spot_price / 50) * 50
 
         spot_price = round(spot_price / 50) * 50
 
@@ -100,11 +100,11 @@ class OptionUpdate:
 
         callPrice = strike_list[self.find_index_descending(call_delta_list)]
         putPrice = strike_list[self.find_index_ascending(put_delta_list)]
-
-        if firstFetch:
-            self.callPrice = 0
-            self.putPrice = 0
-            self.subscribedTokens = ['13']
+        #
+        # if firstFetch:
+        #     self.callPrice = 0
+        #     self.putPrice = 0
+        #     self.subscribedTokens = ['26000']
 
         flag = 0
         if callPrice != self.callPrice:
