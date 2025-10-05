@@ -207,10 +207,10 @@ class AppInitializer:
             # Create and store Dhan context
             client_id = str(config['client_id'])
             # access_token = str(config.get('access_token')) or self._get_dhan_access_token(app_id, app_secret, token_id)
-            token_id = self._get_dhan_access_token_id(config)
 
             access_token = str(config.get('access_token', ''))
             if access_token == '':
+                token_id = self._get_dhan_access_token_id(config)
                 access_token = self._get_dhan_access_token(config, token_id)
             self.dhan_context = self._create_dhan_context(client_id, access_token)
             self.dhan_api = self._create_dhan_api(self.dhan_context)

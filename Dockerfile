@@ -3,10 +3,34 @@ FROM python:3.10.17-slim-bookworm
 #RUN cat /etc/resolv.conf
 RUN apt-get update -y && apt-get -y install python3-pip nano wget curl unzip tree
 
+RUN ln -sf /usr/local/bin/python3 /usr/local/bin/python
+
+RUN apt-get install -y \
+    chromium \
+    chromium-driver \
+    xvfb \
+    libglib2.0-0 \
+    libnss3 \
+    libgconf-2-4 \
+    libfontconfig1 \
+    libxrender1 \
+    libxi6 \
+    libxtst6 \
+    libxrandr2 \
+    libasound2 \
+    libpangocairo-1.0-0 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libgtk-3-0 \
+    libgbm1 \
+    libxss1 \
+    libappindicator3-1 \
+    fonts-liberation
+#    && rm -rf /var/lib/apt/lists/* \
+
 #FROM python:3.10.17-alpine
 #RUN apk add python3-pip nano wget curl unzip tree
 
-RUN ln -sf /usr/local/bin/python3 /usr/local/bin/python
 # RUN apt-get -y install python3-pip nano wget curl unzip tree
 # RUN apt-get -y install python3-pip nano
 ENV VIRTUAL_ENV=/opt/venv
@@ -33,6 +57,7 @@ RUN #cat /etc/resolv.conf
 RUN echo "Asia/Kolkata" > /etc/timezone
 ENV TZ Asia/Kolkata
 
+ENV DISPLAY=:99
 ENTRYPOINT ["/app/entrypoint.sh"]
 #CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 # CMD ["python", "new_widget.py"]
