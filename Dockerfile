@@ -5,7 +5,7 @@ RUN apt-get update -y && apt-get -y install python3-pip nano wget curl unzip tre
 
 RUN ln -sf /usr/local/bin/python3 /usr/local/bin/python
 
-RUN apt-get install -y \
+RUN apt-get update -y && apt-get install -y \
     chromium \
     chromium-driver \
     xvfb \
