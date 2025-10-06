@@ -149,16 +149,16 @@ class Misc:
         return True
 
 
-    def get_nse_weekly_expiry(self, symbol, week, download):
-        df = pd.read_csv(self.nfo_file)
+    def get_nse_weekly_expiry(self, symbol, exchange, instrument,  week=0):
+        df = self.get_df(exchange)
 
         df_index = df[df.Symbol == symbol]
         df_index['Expiry'] = df_index['Expiry'].apply(lambda x: datetime.strptime(x.title(), '%d-%b-%Y'))
         df_index = df_index.sort_values(by='Expiry')
-        expiry_dates = df_index['Expiry'].unique()
+        expiry_dates = df_index[df_index['Instrument'] == instrument]['Expiry'].unique()
         expiry_date = expiry_dates[week]
         current_date = datetime.today().date()
-        if expiry_date.date() <= current_date  and not download:
+        if expiry_date.date() <= current_date  :
             # logger.info("today is expiry, shifting to next week")
             expiry_date = expiry_dates[week+1]
         return expiry_date

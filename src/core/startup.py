@@ -350,12 +350,15 @@ class AppInitializer:
         misc = self.di_container.get('misc')
         # nifty_monthly_expiry = dhan_helper.get_monthly_expiry('13', "IDX_I", 0)
         nifty_monthly_expiry = misc.get_nse_monthly_expiry(symbol="NIFTY", exchange='NFO', instrument = 'FUTIDX')
-
+        nifty_weekly_expiry = misc.get_nse_weekly_expiry(symbol="NIFTY", exchange='NFO', instrument = 'OPTIDX')
+        
         nifty_fut_symbol = "NIFTY" + datetime.strftime(nifty_monthly_expiry, " %b ").upper() + "FUT"
         nifty_fut_symbol_shoonya = "NIFTY" + nifty_monthly_expiry.strftime("%d%b%y").upper() + "F"
         config['nifty_fut_symbol'] = nifty_fut_symbol
         config['nifty_fut_token'] = str(misc.getToken(tsym = nifty_fut_symbol_shoonya, exchange = 'NFO' ))
+
         config['nifty_monthly_expiry'] = nifty_monthly_expiry
+        config['nifty_weekly_expiry'] = nifty_weekly_expiry
 
 
 

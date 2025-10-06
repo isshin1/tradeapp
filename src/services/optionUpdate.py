@@ -29,7 +29,8 @@ class OptionUpdate:
         self.delta = self.config['intraday']['delta']
         self.callPrice = None
         self.putPrice = None
-        self.expiry_date = self.config['nifty_monthly_expiry']
+        self.expiry_date = self.config['nifty_weekly_expiry']
+
         self.subscribedTokens = ['26000']
         # self.ltp = self.getLtp()
         # self.getTokens(self.ltp)
