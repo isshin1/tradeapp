@@ -244,7 +244,7 @@ class TradeManagement:
             mode_prefix = "DEMO: " if self.demo_mode else ""
 
             logger.info(f"{mode_prefix}Cancelling stop-loss order: {order_id}")
-            res = api.cancel_order(OrderID=order_id)
+            res = api.cancel_order(order_id)
             logger.info(res)
             # res = 'CANCELLED'
             if res != 'CANCELLED':
