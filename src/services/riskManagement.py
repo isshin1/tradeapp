@@ -84,8 +84,9 @@ class RiskManagement:
 
     def endSession(self, force=True):
         # return
-        # if not self.is_trading_session():
-        #     return
+        if not self.is_trading_session():
+            logger.info("not trading session, skipping killswitch")
+            return
 
         # start_time = time(9, 0)
         # end_time = time(15, 30)

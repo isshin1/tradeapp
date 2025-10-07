@@ -233,7 +233,7 @@ class AppInitializer:
 
         self.shoonya_helper = self._create_shoonya_helper()
         self.di_container.register_singleton('shoonya_helper', self.shoonya_helper)
-        # self.shoonya_helper.killswitch()
+        self.shoonya_helper.killswitch()
         logger.info("Shoonya services setup completed and registered in DI container")
 
     def _create_database_connection(self, database_url: str):
