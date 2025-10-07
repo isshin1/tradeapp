@@ -88,8 +88,8 @@ class OptionUpdate:
         if self.trade_manager.isTradeActive():
             return
 
-        # if spot_price == 0:
-        #     spot_price = self.trade_manager.ltps[self.config['nifty_token']]
+        if spot_price == 0:
+            spot_price = self.trade_manager.ltps[self.config['nifty_token']]
         # else:
         # spot_price = round(spot_price / 50) * 50
 
