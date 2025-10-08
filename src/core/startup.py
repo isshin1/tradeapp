@@ -26,6 +26,7 @@ from utils.dhanHelper import DhanHelper, DhanAuthAutomation
 from utils.shoonyaHelper import ShoonyaHelper
 from utils.misc import Misc
 from utils.shoonyaApiHelper import ShoonyaApiPy
+from utils.flattradeApiHelper import NorenApiPy
 
 class DIContainer:
     """Simple Dependency Injection Container"""
@@ -102,7 +103,8 @@ class AppInitializer:
             logger.info("Shoonya API client created successfully")
             return shoonya_api
         except Exception as e:
-            logger.error(f"Failed to create Dhan API client: {e}")
+            logger.error(f"Failed to create Shoonya API client: {e}")
+            # return self._create_flattrade_api()
             raise
 
     def _create_shoonya_helper(self):
@@ -114,6 +116,25 @@ class AppInitializer:
             return dhanHelper
         except Exception as e:
             logger.error(f"Failed to create Shoonya helper client: {e}")
+            raise
+
+    def _create_flattrade_api(self, cred=None):
+        """Factory method to create Flattrade API client"""
+        if cred == None:
+            # config = self.di_container.get('config')
+            cred = config['flattrade']
+        try:
+            flattrade_api = NorenApiPy()
+            cred = config['flattrade']
+            totp = pyotp.TOTP(cred['totp_key']).now()
+            ret = flattrade_api.login(userid=cred['user'], password=cred['pwd'], twoFA=totp,
+                                    vendor_code=cred['vc'], api_secret=cred['api_key'], imei=cred['imei'])
+            if ret is None:
+                raise Exception(f"flattrade Login failed")
+            logger.info("flattrade API client created successfully")
+            return flattrade_api
+        except Exception as e:
+            logger.error(f"Failed to create flattrade API client: {e}")
             raise
 
     def _create_dhan_api(self, dhan_context):
@@ -233,8 +254,16 @@ class AppInitializer:
 
         self.shoonya_helper = self._create_shoonya_helper()
         self.di_container.register_singleton('shoonya_helper', self.shoonya_helper)
-        self.shoonya_helper.killswitch()
+        # self.shoonya_helper.killswitch()
         logger.info("Shoonya services setup completed and registered in DI container")
+
+    def setup_flattrade_services(self, cred):
+        self.flattrade_api = self._create_flattrade_api(cred)
+        self.di_container.register_singleton('flattrade_api', self.flattrade_api)
+        self.shoonya_helper = self._create_shoonya_helper()
+        self.di_container.register_singleton('flattrade_helper', self.flattrade_helper)
+        # self.shoonya_helper.killswitch()
+        logger.info("flattrade services setup completed and registered in DI container")
 
     def _create_database_connection(self, database_url: str):
         """Factory method to create database connection"""
@@ -427,8 +456,9 @@ class AppInitializer:
             self.setup_directories()
             self.setup_python_path()
 
-            self.setup_dhan_services(config['dhan'])
             self.setup_shoonya_services(config['shoonya'])
+            self.setup_dhan_services(config['dhan'])
+            # self.setup_flattrade_services(config['flattrade'])
 
             # Register all dependencies
             self.register_dependencies(config)
