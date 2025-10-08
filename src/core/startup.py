@@ -3,7 +3,7 @@ from datetime import datetime
 import os
 import sys
 from typing import Optional, Dict, Any, Callable
-
+import copy
 import pyotp
 # from Dependencies.dhanhq import DhanContext, dhanhq
 
@@ -27,7 +27,7 @@ from utils.shoonyaHelper import ShoonyaHelper
 from utils.misc import Misc
 from utils.shoonyaApiHelper import ShoonyaApiPy
 from utils.flattradeApiHelper import NorenApiPy
-
+from utils.flattradeApiHelper import FlattradeAuthAutomation
 class DIContainer:
     """Simple Dependency Injection Container"""
 
@@ -104,7 +104,7 @@ class AppInitializer:
             return shoonya_api
         except Exception as e:
             logger.error(f"Failed to create Shoonya API client: {e}")
-            # return self._create_flattrade_api()
+            return self._create_flattrade_api()
             raise
 
     def _create_shoonya_helper(self):
@@ -125,12 +125,8 @@ class AppInitializer:
             cred = config['flattrade']
         try:
             flattrade_api = NorenApiPy()
-            cred = config['flattrade']
-            totp = pyotp.TOTP(cred['totp_key']).now()
-            ret = flattrade_api.login(userid=cred['user'], password=cred['pwd'], twoFA=totp,
-                                    vendor_code=cred['vc'], api_secret=cred['api_key'], imei=cred['imei'])
-            if ret is None:
-                raise Exception(f"flattrade Login failed")
+            flatTradeAutomation = FlattradeAuthAutomation(cred)
+            flatTradeAutomation.login(flattrade_api)
             logger.info("flattrade API client created successfully")
             return flattrade_api
         except Exception as e:
@@ -373,8 +369,10 @@ class AppInitializer:
     def _get_config(self):
         # dhan_helper = self.di_container.get('dhan_helper')
 
-        config['nifty_symbol'] = 'Nifty 50'
-        config['nifty_token'] = '26000'
+        config_copy = copy.deepcopy(self.di_container.get('basic_config'))
+
+        config_copy['nifty_symbol'] = 'Nifty 50'
+        config_copy['nifty_token'] = '26000'
 
         misc = self.di_container.get('misc')
         # nifty_monthly_expiry = dhan_helper.get_monthly_expiry('13', "IDX_I", 0)
@@ -383,15 +381,15 @@ class AppInitializer:
         
         nifty_fut_symbol = "NIFTY" + datetime.strftime(nifty_monthly_expiry, " %b ").upper() + "FUT"
         nifty_fut_symbol_shoonya = "NIFTY" + nifty_monthly_expiry.strftime("%d%b%y").upper() + "F"
-        config['nifty_fut_symbol'] = nifty_fut_symbol
-        config['nifty_fut_token'] = str(misc.getToken(tsym = nifty_fut_symbol_shoonya, exchange = 'NFO' ))
+        config_copy['nifty_fut_symbol'] = nifty_fut_symbol
+        config_copy['nifty_fut_token'] = str(misc.getToken(tsym = nifty_fut_symbol_shoonya, exchange = 'NFO' ))
 
-        config['nifty_monthly_expiry'] = nifty_monthly_expiry
-        config['nifty_weekly_expiry'] = nifty_weekly_expiry
+        config_copy['nifty_monthly_expiry'] = nifty_monthly_expiry
+        config_copy['nifty_weekly_expiry'] = nifty_weekly_expiry
 
 
 
-        return config
+        return config_copy
 
     def _create_misc(self):
         basic_config = self.di_container.get('basic_config')

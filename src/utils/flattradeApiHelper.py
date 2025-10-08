@@ -3,6 +3,8 @@ from threading import Timer
 import pandas as pd
 import time
 import concurrent.futures
+import requests
+import hashlib, pyotp
 
 api = None
 
@@ -36,6 +38,78 @@ def get_time(time_string):
 
     return time.mktime(data)
 
+class FlattradeAuthAutomation:
+    def __init__(self, cred):
+        self.cred = cred
+
+    def get_sid(self):
+        url = 'https://authapi.flattrade.in/auth/session'
+
+        headers = {
+            'Referer': 'https://auth.flattrade.in/',
+            'Origin': 'https://auth.flattrade.in'
+        }
+
+        response = requests.post(url, headers=headers)
+        sid = response.text
+        return sid
+
+    def get_token(self):
+        sid = self.get_sid()
+        headers = {
+            'Referer': 'https://auth.flattrade.in/',
+            'Origin': 'https://auth.flattrade.in'
+        }
+        cred = self.cred
+        password = cred['pwd']
+        api_key = cred['api_key']
+        secret_key = cred['secret_key']
+        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        username = cred['user']
+
+        totp = pyotp.TOTP(cred['totp_key'])
+        otp_code = totp.now()
+
+        url = 'https://authapi.flattrade.in/ftauth'
+        payload = {
+            "UserName": username,
+            "Rd": "",
+            "Password": password_hash,
+            "PAN_DOB": otp_code,
+            "App": "",
+            "ClientID": "",
+            "Key": "",
+            "APIKey": api_key,
+            "Sid": sid,
+            "Override": "",
+            "Source": "AUTHPAGE"
+        }
+
+        response = requests.post(url, headers=headers, json=payload)
+
+        url = response.json()['RedirectURL']
+        code = url.split('code=')[1].split('&')[0]
+
+        sha_str = api_key + code + secret_key
+        url = 'https://authapi.flattrade.in/trade/apitoken'
+        payload = {
+        "api_key": api_key,
+        "api_secret": hashlib.sha256(sha_str.encode()).hexdigest(),
+        "request_code": code
+        }
+
+        response = requests.post(url, headers=headers, json=payload)
+
+        # print(response.text)
+        auth_token = response.json().get("token")
+        return auth_token
+
+    def login(self, api):
+        # api = NorenApiPy()
+        cred = self.cred
+        username = cred['user']
+        auth_token = self.get_token()
+        return api.set_session(userid= username, password = '', usertoken= auth_token)
 
 class NorenApiPy(NorenApi):
     def __init__(self):
