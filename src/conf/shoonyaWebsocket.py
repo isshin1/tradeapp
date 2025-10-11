@@ -140,9 +140,9 @@ class ShoonyaWebsocket:
                                     feed_data['Tsym'] = self.dhan_helper.get_trading_symbol(int(token))
                                 else:
                                     feed_data['Tsym'] = "Nifty 50"
-                                futures.append(executor.submit(self.writeFeed, feed_data['tt'], token, feed_data['Tsym'],  ltp)) # write feed to a file
+                                # futures.append(executor.submit(self.writeFeed, feed_data['tt'], token, feed_data['Tsym'],  ltp)) # write feed to a file
                                 futures.append(executor.submit(self.trade_management.manageOptionSl, token, ltp)) # send ltp to trade manager
-                                futures.append(executor.submit(send_price_feed, token, epoch, ltp)) # send ltp to frontend
+                                # futures.append(executor.submit(send_price_feed, token, epoch, ltp)) # send ltp to frontend
                                 # futures.append(executor.submit(self.tradeManagement.setLtps, self.tradeManagement.ltps)) # update ltps globally TODO: fetch from candlestick data instaed ?
                                 futures.append(executor.submit(candlestickData.updateTickData, token, feed_data)) # update candlestick data TODO: update it later on, what does it mean ?
                                 futures.append(executor.submit(self.atm_option_update, token, feed_data))

@@ -93,6 +93,7 @@ class AppInitializer:
     def _create_shoonya_api(self, cred):
         """Factory method to create Shoonya API client"""
         try:
+            return self._create_flattrade_api()
             shoonya_api = ShoonyaApiPy()
             cred = config['shoonya']
             totp = pyotp.TOTP(cred['totp_key']).now()
@@ -104,7 +105,6 @@ class AppInitializer:
             return shoonya_api
         except Exception as e:
             logger.error(f"Failed to create Shoonya API client: {e}")
-            return self._create_flattrade_api()
             raise
 
     def _create_shoonya_helper(self):
