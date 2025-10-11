@@ -44,16 +44,15 @@ class DhanWebsocket:
         websocket_logger.setLevel(logging.WARNING)
 
     @property
-    def trade_management(self):
-        """Lazy loading property for trade_management_service"""
-        if self._trade_management is None:
-            self._trade_management = self.di_container.get('trade_management_service')
-        return self._trade_management
+    def riskManagementobj(self):
+        if self._risk_management is None:
+            self._risk_management = self.di_container.get('risk_management_service')
+        return self._risk_management
 
     def run_order_update(self):
         if self._order_client is None:
             self.order_client = OrderUpdate(self.dhan_context)
-            self.order_client.on_update = self.trade_management.on_order_update
+            self.order_client.on_update = self.riskManagementobj.sanityCheck
         while True:
             try:
                 self.order_client.connect_to_dhan_websocket_sync()

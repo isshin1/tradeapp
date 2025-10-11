@@ -83,16 +83,10 @@ class RiskManagement:
         return datetime.now().time() > start_time and datetime.now().time() < end_time
 
     def endSession(self, force=True):
-        # return
+
         if not self.is_trading_session():
             logger.info("not trading session, skipping killswitch")
             return
-
-        # start_time = time(9, 0)
-        # end_time = time(15, 30)
-        #
-        # if datetime.now().time() < start_time or datetime.now().time() > end_time:
-        #     return
 
         self.update()
         logger.info(f"turning killswitch on with trades {self.tradeCount} and pnl {self.pnl}")
@@ -126,7 +120,7 @@ class RiskManagement:
             return 3 - diff
         return 0
 
-    def sanityCheck(self):
+    def sanityCheck(self, *args, **kwargs):
         self.lastTradeTime = datetime.now()
         logger.info("running sanity check")
         thread1 = threading.Thread(target=self.killswitch)

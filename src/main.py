@@ -33,6 +33,7 @@ async def startup_function():
         # Initialize the application with DI
         app_initializer.initialize_app(config)
         app_initializer.di_container.get('shoonya_websocket')
+        app_initializer.di_container.get('dhan_websocket')
         app_initializer.di_container.get('candle_download')
         logger.info("Application initialization completed")
 

@@ -180,6 +180,20 @@ class AppInitializer:
             logger.error(f"Failed to initialize Shoonya WebSocket: {e}")
             raise
 
+    def _create_dhan_websocket(self):
+        print("Testing dhan_websocket creation...")
+        config = self.di_container.get('config')
+        """Initialize and start Dhan WebSocket connections"""
+        try:
+            self.dhan_ws = DhanWebsocket(self.di_container)
+            self.dhan_ws.start_dhan_websocket()
+            logger.info("Dhan WebSocket services started successfully")
+            return self.dhan_ws
+        except Exception as e:
+            logger.error(f"Failed to initialize Dhan WebSocket: {e}")
+            raise
+
+
     def _download_candles(self):
         print("Starting Candle Download Scheduler...")
         config = self.di_container.get('config')
@@ -246,6 +260,8 @@ class AppInitializer:
                                                lambda: self._create_option_update_service())
             self.di_container.register_factory('shoonya_websocket',
                                                  lambda: self._create_shoonya_websocket())
+            self.di_container.register_factory('dhan_websocket',
+                                                 lambda: self._create_dhan_websocket())
             self.di_container.register_factory('candle_download',
                                                  lambda: self._download_candles()
                                                  )
