@@ -104,11 +104,12 @@ class FlattradeAuthAutomation:
         auth_token = response.json().get("token")
         return auth_token
 
-    def login(self, api):
+    def login(self, api, auth_token):
         # api = NorenApiPy()
         cred = self.cred
         username = cred['user']
-        auth_token = self.get_token()
+        if auth_token == None:
+            auth_token = self.get_token()
         return api.set_session(userid= username, password = '', usertoken= auth_token)
 
 class NorenApiPy(NorenApi):

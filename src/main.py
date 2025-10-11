@@ -7,8 +7,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect,  Depends, HTTPExcep
 from contextlib import asynccontextmanager
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-# # from services.riskManagement import riskManagementobj
-# from conf.dhanWebsocket import start_dhan_websocket
+
 from conf.config import *
 from conf.logging_config import logger
 from api.endpoints import riskController , testController, orderController, pollingController, tradeController
@@ -18,7 +17,6 @@ import uvicorn
 import os, stat
 from conf.websocketService import connection_manager
 from core.startup import app_initializer, di_container
-from services.candleDownload import download_candlestick_data
 # Initialize the FastAPI app
 app = FastAPI()
 # Include the routers
@@ -29,25 +27,13 @@ app.include_router(pollingController.router)
 
 app.include_router(tradeController.router)
 
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["*"],  # Allows all origins
-#     allow_credentials=True,
-#     allow_methods=["*"],  # Allows all methods
-#     allow_headers=["*"],  # Allows all headers
-# )
-
 # Define the startup function
 async def startup_function():
     try:
         # Initialize the application with DI
         app_initializer.initialize_app(config)
-        app_initializer.di_container.get('dhan_websocket')
         app_initializer.di_container.get('shoonya_websocket')
-
-        risk_management = app_initializer.di_container.get('risk_management_service')
-        risk_management.sanityCheck()
-        # The websocket will be created when first accessed due to lazy loading
+        app_initializer.di_container.get('candle_download')
         logger.info("Application initialization completed")
 
     except Exception as e:
@@ -84,26 +70,6 @@ async def lifespan(app: FastAPI):
 
 # Assign the lifespan context to the app
 app.router.lifespan_context = lifespan
-
-
-
-
-# class ConnectionManager:
-#     def __init__(self):
-#         self.active_connections: List[WebSocket] = []
-#
-#     async def connect(self, websocket: WebSocket):
-#         await websocket.accept()
-#         self.active_connections.append(websocket)
-#
-#     def disconnect(self, websocket: WebSocket):
-#         self.active_connections.remove(websocket)
-#
-#     async def send_message(self, message: str):
-#         for connection in self.active_connections:
-#             await connection.send_text(message)
-#
-# connection_manager = ConnectionManager()
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):

@@ -17,7 +17,9 @@ def get_date_folders(date_str=None):
         'feed': os.path.join(BASE_DIR, 'data', 'feed', year, month),
         'log': os.path.join(BASE_DIR, 'data', 'logs', year, month),
         'order': os.path.join(BASE_DIR, 'data', 'orderData', year, month),
-        'position': os.path.join(BASE_DIR, 'data', 'positionData', year, month)
+        'position': os.path.join(BASE_DIR, 'data', 'positionData', year, month),
+        'candlestick': os.path.join(BASE_DIR, 'data', 'candleStickData')
+
     }
 
 with open(BASE_DIR+'/conf/config.yaml', 'r') as file:

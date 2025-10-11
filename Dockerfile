@@ -50,7 +50,7 @@ COPY entrypoint.sh /app/
 RUN chmod +x /app/entrypoint.sh
 
 # COPY src/config/service_account.json /root/.config/gspread/
-# RUN ls /app
+# RUN ls /apps
 # RUN tree -L 2 /app/
 #RUN echo "nameserver 1.1.1.1" >> /etc/resolv.conf
 RUN #cat /etc/resolv.conf
