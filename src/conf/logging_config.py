@@ -80,7 +80,7 @@ def setup_logging_programmatic():
         log_folder = os.path.join(BASE_DIR, 'data', 'logs', year, month)
         os.makedirs(log_folder, exist_ok=True)
 
-        dynamic_log_file = os.path.join(log_folder, f"{date_str}.log")
+        dynamic_log_file = os.path.join(log_folder, f"{date_str}_feed.log")
 
         # Configure logging programmatically - single file for everything
         logging_config = {
