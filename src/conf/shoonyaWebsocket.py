@@ -105,8 +105,8 @@ class ShoonyaWebsocket:
         UPDATE = False
         if 'tk' in tick_data:
             token = tick_data['tk']
-            timest = datetime.fromtimestamp(int(tick_data['ft'])).isoformat()
-            epoch = tick_data.get("ft")
+            epoch = int(tick_data.get("ft", int(time.time())))
+            timest = datetime.fromtimestamp(epoch).isoformat()
             feed_data = {'tt': timest, 'ft': float(epoch)}
 
             if 'lp' in tick_data:
