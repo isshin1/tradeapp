@@ -79,6 +79,16 @@ class AppInitializer:
             sys.path.append(BASE_DIR)
             logger.info(f"Added to sys.path: {BASE_DIR}")
 
+    def _create_dhan_context(self, client_id: str, access_token: str):
+        """Factory method to create Dhan context"""
+        try:
+            dhan_context = DhanContext(client_id, access_token)
+            logger.info("Dhan context created successfully")
+            return dhan_context
+        except Exception as e:
+            logger.error(f"Failed to create Dhan context: {e}")
+            raise
+
     def _create_shoonya_api(self, cred):
         """Factory method to create Shoonya API client"""
         try:
@@ -107,10 +117,52 @@ class AppInitializer:
             logger.error(f"Failed to create Shoonya helper client: {e}")
             raise
 
+    def _create_dhan_api(self, dhan_context):
+        """Factory method to create Dhan API client"""
+
+        def checkTokenValidity( token):
+            url = 'https://api.dhan.co/v2/profile'
+            headers = {'access-token': token}
+
+            response = requests.get(url, headers=headers)
+            res = response.json()
+            if 'errorType' in res:
+                logger.error("Token is invalid")
+                raise ValueError("access token is invalid")
+            logger.info(response.status_code)
+
+        try:
+            dhan_api = dhanhq(dhan_context)
+            checkTokenValidity(dhan_context.access_token)
+            logger.info("Dhan API client created successfully")
+            return dhan_api
+        except Exception as e:
+            logger.error(f"Failed to create Dhan API client: {e}")
+            raise
+
+    def _get_dhan_access_token(self, config, token_id):
+        """Get Dhan access token using client credentials flow"""
+
+        app_id = str(config['app_id'])
+        app_secret = str(config['app_secret'])
+
+        try:
+            url = f"https://auth.dhan.co/app/consumeApp-consent?tokenId={token_id}"
+            headers = {
+                "app_id": app_id,
+                "app_secret": app_secret
+            }
+            response = requests.post(url, headers=headers)
+            response = response.json()
+            return response['accessToken']
+        except Exception as e:
+            logger.error(f"Failed to create Dhan helper client: {e}")
+            raise
+
     def _create_dhan_helper(self):
         """Factory method to create Dhan API client"""
         try:
-            dhan_api = ""
+            dhan_api = self.di_container.get('dhan_api')
             dhanHelper = DhanHelper(dhan_api)
             logger.info("Dhan Helper client created successfully")
             return dhanHelper
@@ -118,9 +170,55 @@ class AppInitializer:
             logger.error(f"Failed to create Dhan helper client: {e}")
             raise
 
+
+    def _get_concent_id(self, client_id, app_id, app_secret):
+        url = f"https://auth.dhan.co/app/generate-consent?client_id={client_id}"
+
+        headers = {
+            "app_id": app_id,
+            "app_secret": app_secret
+        }
+
+        response = requests.post(url, headers=headers)
+
+        consentAppId = response.json()['consentAppId']
+        return consentAppId
+
+    def _get_dhan_access_token_id(self, config):
+
+        client_id = str(config['client_id'])
+        app_id = str(config['app_id'])
+        app_secret = str(config['app_secret'])
+        phone_number = str(config['phone_number'])
+        totp_secret = str(config['totp_secret'])
+        pin = str(config['pin'])
+
+        consentAppId = self._get_concent_id(client_id, app_id, app_secret)
+        automation = DhanAuthAutomation(headless=True)
+        token_id = automation.get_auth_token(
+            login_url=f"https://auth.dhan.co/login/consentApp-login?consentAppId={consentAppId}",
+            mobile_number=phone_number,
+            totp_secret=totp_secret,
+            pin=pin
+        )
+        return token_id
+
     def setup_dhan_services(self, config):
         """Setup Dhan context and API client"""
         try:
+            # Create and store Dhan context
+            client_id = str(config['client_id'])
+            # access_token = str(config.get('access_token')) or self._get_dhan_access_token(app_id, app_secret, token_id)
+
+            access_token = str(config.get('access_token', ''))
+            if access_token == '':
+                token_id = self._get_dhan_access_token_id(config)
+                access_token = self._get_dhan_access_token(config, token_id)
+            self.dhan_context = self._create_dhan_context(client_id, access_token)
+            self.dhan_api = self._create_dhan_api(self.dhan_context)
+
+            self.di_container.register_singleton('dhan_context', self.dhan_context)
+            self.di_container.register_singleton('dhan_api', self.dhan_api)
 
             self.dhan_helper = self._create_dhan_helper()
             self.di_container.register_singleton('dhan_helper', self.dhan_helper)
@@ -146,6 +244,12 @@ class AppInitializer:
         self.shoonya_helper = self._create_shoonya_helper()
         self.di_container.register_singleton('flattrade_helper', self.flattrade_helper)
         logger.info("flattrade services setup completed and registered in DI container")
+
+    def _create_risk_management_service(self):
+        """Factory method to create risk management service"""
+        logger.info("Creating RiskManagementService with dependencies")
+        # return RiskManagement(config=config, dhan_api=dhan_api, dhan_helper=dhan_helper)
+        return RiskManagement(self.di_container)
 
     def _create_database_connection(self, database_url: str):
         """Factory method to create database connection"""
@@ -255,6 +359,9 @@ class AppInitializer:
             self.di_container.register_factory('misc',
                                                lambda: self._create_misc())
 
+            self.di_container.register_factory('risk_management_service',
+                                               lambda: self._create_risk_management_service())
+
             self.di_container.register_factory('config', lambda: self._get_config())
             self.di_container.register_factory('option_update_service',
                                                lambda: self._create_option_update_service())
@@ -281,6 +388,7 @@ class AppInitializer:
             self.setup_python_path()
 
             self.setup_shoonya_services(config['shoonya'])
+            self.setup_dhan_services(config['dhan'])
             # Register all dependencies
             self.register_dependencies(config)
 

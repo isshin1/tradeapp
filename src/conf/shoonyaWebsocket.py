@@ -21,7 +21,7 @@ class ShoonyaWebsocket:
         self.config = self.di_container.get('config')
         self.shoonya_api = self.di_container.get('shoonya_api')
         self.dhan_helper = self.di_container.get('dhan_helper')
-        self.tradeManager = self.di_container.get('trade_manager')
+        # self.tradeManager = self.di_container.get('trade_manager')
         self.misc = self.di_container.get('misc')
 
         self.nifty_fut_token = self.config['nifty_fut_token']
@@ -39,6 +39,8 @@ class ShoonyaWebsocket:
 
         self.initialize_feed_file()
         self.current_chart_token = 0
+
+        self.ltps = {}
 # marketAnalysis.run()
 
 
@@ -91,12 +93,12 @@ class ShoonyaWebsocket:
 
             if self.option_update.init == None:
                 self.option_update.getTokens(feed_data['ltp'])
-                self.option_update.updateOptions(int(self.tradeManager.ltps[self.nifty_token]))
+                self.option_update.updateOptions(int(self.ltps[self.nifty_token]))
                 self.option_update.init = True
                 return
 
             if feed_data['ft'] % 10 == 0:
-                self.option_update.updateOptions(int(self.tradeManager.ltps[self.nifty_token]))
+                self.option_update.updateOptions(int(self.ltps[self.nifty_token]))
         except Exception as err:
             logger.error(f"error with option update occured {err}")
 
@@ -105,7 +107,7 @@ class ShoonyaWebsocket:
         UPDATE = False
         if 'tk' in tick_data:
             token = tick_data['tk']
-            epoch = tick_data.get("ft", int(time.time()))
+            epoch = int(tick_data.get("ft", int(time.time())))
             timest = datetime.fromtimestamp(epoch).isoformat()
             feed_data = {'tt': timest, 'ft': float(epoch)}
 
@@ -132,7 +134,7 @@ class ShoonyaWebsocket:
                     if 'ltp' in feed_data:
                         try:
                             ltp = float(feed_data['ltp'])
-                            self.tradeManager.ltps[token] = ltp
+                            self.ltps[token] = ltp
                             # manageOptionSl(token, float(feedJson[token]['ltp']))
                             with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
                                 futures = []

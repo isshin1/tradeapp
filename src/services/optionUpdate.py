@@ -21,11 +21,11 @@ class OptionUpdate:
         self.dhan_api = self.di_container.get('dhan_api')
         self.shoonya_api = self.di_container.get('shoonya_api')
         self.dhan_helper = self.di_container.get('dhan_helper')
-        self.trade_manager = self.di_container.get('trade_manager')
-        self.decision_points = self.di_container.get('decision_points_manager')
+        # self.trade_manager = self.di_container.get('trade_manager')
+        # self.decision_points = self.di_container.get('decision_points_manager')
         misc = self.di_container.get('misc')
         # risk_management = self.di_container.get('risk_management_service')
-        trade_management = self.di_container.get('trade_management_service')
+        # trade_management = self.di_container.get('trade_management_service')
         self.delta = self.config['intraday']['delta']
         self.callPrice = None
         self.putPrice = None
@@ -36,7 +36,7 @@ class OptionUpdate:
         # self.getTokens(self.ltp)
         self.init = None
         self.misc = misc
-        self.tradeManagement = trade_management
+        # self.tradeManagement = trade_management
         # self.tradeManager = trade_manager
         self.fut_token = self.config['nifty_fut_token']
         self.fut_symbol = self.config['nifty_fut_symbol']
@@ -85,11 +85,11 @@ class OptionUpdate:
     def updateOptions(self, spot_price:int = 0, firstFetch=False ):
 
         # do not update options if trade is active
-        if self.trade_manager.isTradeActive():
-            return
+        # if self.trade_manager.isTradeActive():
+        #     return
 
-        if spot_price == 0:
-            spot_price = self.trade_manager.ltps[self.config['nifty_token']]
+        # if spot_price == 0:
+        #     spot_price = self.trade_manager.ltps[self.config['nifty_token']]
         # else:
         # spot_price = round(spot_price / 50) * 50
 
@@ -131,10 +131,10 @@ class OptionUpdate:
                 self.subscribedTokens.append(self.putToken)
             flag = 1
 
-        if flag == 1 or firstFetch:
-            websocketService.update_atm_options(self.callToken, self.callSymbol, self.putToken, self.putSymbol)
-            websocketService.update_fut(self.fut_token, self.fut_symbol)
-            self.tradeManagement.updateOpenOrders()
+        # if flag == 1 or firstFetch:
+        #     websocketService.update_atm_options(self.callToken, self.callSymbol, self.putToken, self.putSymbol)
+        #     websocketService.update_fut(self.fut_token, self.fut_symbol)
+            # self.tradeManagement.updateOpenOrders()
             # r.publish('channel1', f"{self.callToken} {self.callSymbol} {self.putToken} {self.putSymbol}")
             # changeChart(self.callToken)
 

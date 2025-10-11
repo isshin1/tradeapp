@@ -36,7 +36,8 @@ class DhanWebsocket:
         self._option_update = None
 
         self.feed_file = get_date_folders()['feed'] + '/' + str(datetime.now().date()) + ".csv"
-        self.tradeManager = self.di_container.get('trade_manager')
+        # self.tradeManager = self.di_container.get('trade_manager')
+        self._risk_management = None
         self.dhan_helper = self.di_container.get('dhan_helper')
         self.nifty_fut_token = self.config['nifty_fut_token']
         self.nifty_token = self.config['nifty_token']
