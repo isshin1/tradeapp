@@ -28,6 +28,7 @@ from utils.misc import Misc
 from utils.shoonyaApiHelper import ShoonyaApiPy
 from utils.flattradeApiHelper import NorenApiPy
 from utils.flattradeApiHelper import FlattradeAuthAutomation
+from utils.dhanHelper import get_access_token
 class DIContainer:
     """Simple Dependency Injection Container"""
 
@@ -146,6 +147,7 @@ class AppInitializer:
                 logger.error("Token is invalid")
                 raise ValueError("access token is invalid")
             logger.info(response.status_code)
+            logger.info("access token is valid")
 
         try:
             dhan_api = dhanhq(dhan_context)
@@ -209,7 +211,7 @@ class AppInitializer:
         pin = str(config['pin'])
 
         consentAppId = self._get_concent_id(client_id, app_id, app_secret)
-        automation = DhanAuthAutomation(headless=True)
+        automation = DhanAuthAutomation(headless=False)
         token_id = automation.get_auth_token(
             login_url=f"https://auth.dhan.co/login/consentApp-login?consentAppId={consentAppId}",
             mobile_number=phone_number,
@@ -227,8 +229,9 @@ class AppInitializer:
 
             access_token = str(config.get('access_token', ''))
             if access_token == '':
-                token_id = self._get_dhan_access_token_id(config)
-                access_token = self._get_dhan_access_token(config, token_id)
+                # token_id = self._get_dhan_access_token_id(config)
+                # access_token = self._get_dhan_access_token(config, token_id)
+                access_token = get_access_token(config)
             self.dhan_context = self._create_dhan_context(client_id, access_token)
             self.dhan_api = self._create_dhan_api(self.dhan_context)
 

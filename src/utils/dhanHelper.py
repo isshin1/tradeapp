@@ -18,6 +18,17 @@ import time
 import pyotp  # for TOTP generation
 from datetime import datetime
 
+from urllib.parse import quote_plus
+import random
+from urllib.parse import urlparse, parse_qs
+from Crypto.Cipher import AES
+from Crypto.Protocol.KDF import PBKDF2
+from Crypto.Util.Padding import pad, unpad
+import base64
+import json
+import pyotp
+import yaml
+
 class DhanHelper:
     def __init__(self, dhan_api):
         self.dhan_api = dhan_api
@@ -572,7 +583,21 @@ class DhanAuthAutomation:
 
             # Wait for auto-submission
             print(f"Waiting for TOTP auto-submission... {datetime.now().strftime('%H:%M:%S')}")
-            time.sleep(6)  # Increased wait time
+            time.sleep(3)  # Increased wait time
+            print("check if proceed button exists")
+            try:
+                proceed_button = self.wait.until(
+                    EC.element_to_be_clickable(
+                        (By.XPATH, "//button[contains(text(), 'Proceed') or contains(., 'Proceed')]"))
+                )
+                # Scroll into view if needed
+                self.driver.execute_script("arguments[0].scrollIntoView(true);", proceed_button)
+                proceed_button.click()
+                print("proceed button clicked")
+                time.sleep(3)
+            except:
+                # Proceed button doesn't exist, continue without clicking
+                pass
 
             # Verify we've moved past TOTP page
             totp_success = False
@@ -669,3 +694,366 @@ class DhanAuthAutomation:
         if self.driver:
             self.driver.quit()
             print("Browser closed")
+
+
+
+# Constants from the JavaScript code analysis
+SALT = bytes.fromhex("498960e491150a0fc0f21822a147fd62")
+IV = bytes.fromhex("320ef7705d1030f0a1a55b3dcf676cb8")
+PASSPHRASE = "DHAN"
+KEY_SIZE = 16  # 128 bits
+ITERATIONS = 1000
+
+# --- Configuration ---
+TOKEN_URL = "https://partner-login.dhan.co/jwt/token"
+LOGIN_URL = "https://partner-login.dhan.co/loginV2/login"
+TOTP_URL = "https://partner-login.dhan.co/dhanhq/validateTOTP"
+SIMPLIFIED_LOGIN_URL = "https://partner-login.dhan.co/loginV2/simplifiedLogin"
+CONSUME_CONSENT_URL = "https://partner-login.dhan.co/loginV2/consentAppConsume"
+ACCESS_TOKEN_URL = "https://auth.dhan.co/app/consumeApp-consent"
+
+
+def generate_key():
+    """Derives the encryption key using PBKDF2."""
+    return PBKDF2(PASSPHRASE, SALT, dkLen=KEY_SIZE, count=ITERATIONS)
+
+
+def encrypt(data_dict):
+    """
+    Encrypts a dictionary using AES CBC, matching the logic from the Dhan website.
+
+    Args:
+        data_dict: The dictionary to encrypt.
+
+    Returns:
+        A Base64 encoded string of the encrypted data.
+    """
+    try:
+        key = generate_key()
+        cipher = AES.new(key, AES.MODE_CBC, IV)
+        plaintext = json.dumps(data_dict, separators=(',', ':')).encode('utf-8')
+        padded_plaintext = pad(plaintext, AES.block_size)
+        ciphertext = cipher.encrypt(padded_plaintext)
+        return base64.b64encode(ciphertext).decode('utf-8')
+    except Exception as e:
+        print(f"An error occurred during encryption: {e}")
+        return None
+
+
+def decrypt(encrypted_base64_string):
+    """
+    Decrypts a Base64 encoded AES CBC string, matching the logic from the Dhan website.
+
+    Args:
+        encrypted_base64_string: The Base64 encoded string to decrypt.
+
+    Returns:
+        The decrypted dictionary.
+    """
+    try:
+        key = generate_key()
+        cipher = AES.new(key, AES.MODE_CBC, IV)
+
+        # Decode the Base64 string to get the ciphertext
+        ciphertext = base64.b64decode(encrypted_base64_string)
+
+        # Decrypt and unpad the data
+        decrypted_padded = cipher.decrypt(ciphertext)
+        decrypted = unpad(decrypted_padded, AES.block_size)
+
+        # Decode from bytes to string and parse JSON
+        return json.loads(decrypted.decode('utf-8'))
+
+    except (ValueError, KeyError) as e:
+        print(f"An error occurred during decryption (likely padding error or invalid key): {e}")
+        return None
+    except Exception as e:
+        print(f"An error occurred during decryption: {e}")
+        return None
+
+
+def generate_device_id():
+    """Generate device ID exactly like Dhan's getDeviceInfo() function"""
+    # Simulating browser characteristics
+    mime_types_length = 4
+    user_agent_digits = "537361"
+    plugins_length = 5
+    screen_height = 1080
+    screen_width = 1920
+    pixel_depth = 24
+    random_number = random.randint(0, 999999)
+
+    # Concatenate all values as strings (like JavaScript does)
+    device_id = str(mime_types_length)
+    device_id += user_agent_digits
+    device_id += str(plugins_length)
+    device_id += str(screen_height)
+    device_id += str(screen_width)
+    device_id += str(pixel_depth)
+    device_id += str(random_number)
+
+    print(f"generated device id is {device_id}")
+    return device_id
+
+
+def get_base_headers(consent_app_id):
+    """Returns base headers used across all requests"""
+    return {
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'en-GB,en-US;q=0.9,en;q=0.8',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Origin': 'https://partner-login.dhan.co',
+        'Referer': f'https://partner-login.dhan.co/?consentAppId={consent_app_id}',
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-origin',
+    }
+
+
+def get_jwt_token(session, user_id, device_id, consent_app_id):
+    """
+    Fetches the JWT token by sending a URL-encoded JSON payload,
+    mimicking the provided curl command.
+    """
+    print("Requesting JWT Token...")
+
+    payload = {
+        "user_id": user_id,
+        "pass": None,
+        "imei_no": device_id,
+        "web_version": "Chrome Browser",
+        "role": "Admin",
+        "app_version": "v1.0.0.10",
+        "app_id": "DH_WEB",
+        "source": "P"
+    }
+
+    # Convert dict to JSON string, then URL-encode the whole string
+    request_body = quote_plus(json.dumps(payload, separators=(',', ':')))
+
+    headers = get_base_headers(consent_app_id)
+
+    try:
+        # The initial GET request helps in setting up necessary cookies
+        session.get(f"https://partner-login.dhan.co/?consentAppId={consent_app_id}")
+
+        print("\nSending POST request to:", TOKEN_URL)
+        print("Headers:", json.dumps(headers, indent=2))
+        print("Raw Body:", request_body)
+
+        response = session.post(TOKEN_URL, headers=headers, data=request_body)
+        response.raise_for_status()
+
+        jwt_token = response.text
+        print("\n--- SUCCESS ---")
+        print("Received JWT Token:", jwt_token)
+        return jwt_token
+
+    except requests.exceptions.RequestException as e:
+        print(f"\n--- ERROR ---")
+        print(f"Error getting JWT token: {e}")
+        if e.response is not None:
+            print("Status Code:", e.response.status_code)
+            print("Response Body:", e.response.text)
+        return None
+
+
+def login(session, user_id, device_id, jwt_token, consent_app_id):
+    """
+    Step 2: Performs login using the JWT, sending a raw, encrypted payload.
+    """
+    print("\n--- Step 2: Performing Login ---")
+
+    payload = {
+        "user_id": user_id,
+        "pass": None,
+        "imei_no": device_id,
+        "web_version": "Chrome Browser",
+        "role": "Admin",
+        "app_version": "v1.0.0.10",
+        "app_id": "DH_WEB",
+        "source": "P",
+        "askpass": True
+    }
+
+    encrypted_payload_str = encrypt(payload)
+    if not encrypted_payload_str:
+        print("Encryption failed.")
+        return
+
+    # As per the curl command, the raw body is the encrypted string,
+    # wrapped in quotes, and then URL-encoded.
+    request_body = quote_plus(f'"{encrypted_payload_str}"')
+
+    headers = get_base_headers(consent_app_id)
+    headers['Authorisation'] = f'Token {jwt_token}'
+
+    try:
+        response = session.post(LOGIN_URL, headers=headers, data=request_body)
+        response.raise_for_status()
+
+        print("Login request sent successfully.")
+
+        encrypted_response_data = response.json().get("data")
+        print("Raw Encrypted Response Data:", encrypted_response_data)
+
+        decrypted_response = decrypt(encrypted_response_data)
+        if "status" in decrypted_response and decrypted_response["status"] == "success":
+            print("\n--- SUCCESS ---")
+            print("Decrypted Login Response:", json.dumps(decrypted_response, indent=2))
+            return decrypted_response["data"][0]["token_id"]
+
+    except requests.exceptions.RequestException as e:
+        print(f"\n--- ERROR ---")
+        print(f"Error during login: {e}")
+        if e.response is not None:
+            print("Status Code:", e.response.status_code)
+            print("Response Body:", e.response.text)
+
+
+def validate_totp(session, token_id, totp_key, device_id, user_id, consent_app_id, jwt_token):
+    totp = pyotp.TOTP(totp_key)
+    otp_code = totp.now()
+
+    payload = {
+        "otp": otp_code, "device_id": device_id, "entity_id": user_id,
+        "token_id": token_id, "web_version": "Chrome Browser", "source": "P"
+    }
+    encrypted_payload = encrypt(payload)
+    request_body = quote_plus(f'"{encrypted_payload}"')
+    headers = get_base_headers(consent_app_id)
+    headers['Authorisation'] = f'Token {jwt_token}'
+
+    try:
+        response = session.post(TOTP_URL, headers=headers, data=request_body)
+        response.raise_for_status()
+        encrypted_data = response.json().get("data")
+        decrypted_data = decrypt(encrypted_data)
+        print("TOTP validation request successful.")
+        print("Decrypted TOTP Response:", json.dumps(decrypted_data, indent=2))
+        return decrypted_data
+    except requests.exceptions.RequestException as e:
+        print(f"Error in Step 3: {e}")
+        return None
+
+
+def simplified_login(session, token_id, pin, consent_app_id, user_id, jwt_token):
+    payload = {
+        "user_id": user_id,
+        "token_id": token_id,
+        "pass_type": "OP",
+        "salt": "nahd",
+        "pin": pin,
+        "web_version": "Chrome Browser",
+        "source": "P",
+        "consent_id": consent_app_id
+    }
+    encrypted_payload = encrypt(payload)
+    request_body = quote_plus(f'"{encrypted_payload}"')
+    headers = get_base_headers(consent_app_id)
+    headers['Authorisation'] = f'Token {jwt_token}'
+
+    try:
+        response = session.post(SIMPLIFIED_LOGIN_URL, headers=headers, data=request_body)
+        response.raise_for_status()
+        encrypted_data = response.json().get("data")
+        decrypted_data = decrypt(encrypted_data)
+        print("simplified login request successful.")
+        print("simplified Login Response:", json.dumps(decrypted_data, indent=2))
+
+        return decrypted_data
+    except requests.exceptions.RequestException as e:
+        print(f"Error in Step 3: {e}")
+        return None
+
+
+def consume_concent(session, consent_app_id, client_id, jwt_token):
+    payload = {
+        "consentId": consent_app_id,
+        "client_id": client_id
+    }
+    encrypted_payload = encrypt(payload)
+    request_body = quote_plus(f'"{encrypted_payload}"')
+    headers = get_base_headers(consent_app_id)
+    headers['Authorisation'] = f'Token {jwt_token}'
+
+    try:
+        response = session.post(CONSUME_CONSENT_URL, headers=headers, data=request_body, allow_redirects=False)
+        response.raise_for_status()
+        encrypted_data = response.json().get("data")
+        decrypted_data = decrypt(encrypted_data)
+        print("consent consumption request successful.")
+        print("consent consumption Response:", json.dumps(decrypted_data, indent=2))
+
+        # return decrypted_data
+        redirect_url = decrypted_data["data"]["redirectUrl"]
+        parsed_url = urlparse(redirect_url)
+        query_params = parse_qs(parsed_url.query)
+
+        token_id = query_params.get("tokenId", [None])[0]
+
+        return token_id
+
+    except requests.exceptions.RequestException as e:
+        print(f"Error in Step 3: {e}")
+        return None
+
+
+def extract_access_token(token_id, app_id, app_secret):
+    url = ACCESS_TOKEN_URL + f"?tokenId={token_id}"
+    headers = {
+        "app_id": app_id,
+        "app_secret": app_secret
+    }
+
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()  # raise error if request failed
+    data = response.json()
+    # Extract access token
+    access_token = data.get("accessToken")
+    print("Access Token:", access_token)
+    return access_token
+
+
+def get_concent_app_id(client_id, app_id, app_secret):
+    url = f"https://auth.dhan.co/app/generate-consent?client_id={client_id}"
+
+    headers = {
+        "app_id": app_id,
+        "app_secret": app_secret
+    }
+
+    response = requests.post(url, headers=headers)
+    response.raise_for_status()  # raise error if request fails
+
+    data = response.json()
+
+    consent_app_id = data.get("consentAppId")
+    print(f"generated concent id is {consent_app_id} ")
+    return consent_app_id
+
+
+def get_access_token(cred):
+    CLIENT_ID = cred['client_id']
+    USER_ID = str(cred['phone_number'])
+    app_id = cred['app_id']
+    app_secret = cred['app_secret']
+    TOTP_KEY = cred['totp_secret']
+    PIN = cred['pin']
+
+    DEVICE_ID = generate_device_id()
+    CONSENT_APP_ID = get_concent_app_id(CLIENT_ID, app_id, app_secret)
+
+    with requests.Session() as s:
+        # Step 1: Get the JWT token
+        token = get_jwt_token(s, USER_ID, DEVICE_ID, CONSENT_APP_ID)
+
+        if token:
+            # Step 2: Use the token to perform the login
+            token_id = login(s, USER_ID, DEVICE_ID, token, CONSENT_APP_ID)
+            validate_totp(s, token_id, TOTP_KEY, DEVICE_ID, USER_ID, CONSENT_APP_ID, token)
+            simplified_login(s, token_id, PIN, CONSENT_APP_ID, USER_ID, token)
+            token_id = consume_concent(s, CONSENT_APP_ID, CLIENT_ID, token)
+            access_token = extract_access_token(token_id, app_id, app_secret)
+            return access_token
