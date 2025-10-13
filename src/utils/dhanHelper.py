@@ -1035,7 +1035,7 @@ def get_concent_app_id(client_id, app_id, app_secret):
 
 
 def get_access_token(cred):
-    CLIENT_ID = cred['client_id']
+    CLIENT_ID = str(cred['client_id'])
     USER_ID = str(cred['phone_number'])
     app_id = cred['app_id']
     app_secret = cred['app_secret']
