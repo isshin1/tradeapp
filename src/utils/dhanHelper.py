@@ -1037,10 +1037,10 @@ def get_concent_app_id(client_id, app_id, app_secret):
 def get_access_token(cred):
     CLIENT_ID = str(cred['client_id'])
     USER_ID = str(cred['phone_number'])
-    app_id = cred['app_id']
+    app_id = str(cred['app_id'])
     app_secret = cred['app_secret']
     TOTP_KEY = cred['totp_secret']
-    PIN = cred['pin']
+    PIN = str(cred['pin'])
 
     DEVICE_ID = generate_device_id()
     CONSENT_APP_ID = get_concent_app_id(CLIENT_ID, app_id, app_secret)
