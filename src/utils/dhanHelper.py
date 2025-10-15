@@ -1,4 +1,6 @@
 # from conf.config import dhan_api
+from typing import Tuple, Dict
+
 from conf.logging_config import logger
 import requests
 import os, sys, time
@@ -130,6 +132,7 @@ class DhanHelper:
         return pnl
 
     def getTradeCount(self):
+        time.sleep(1)
         df = self.get_trade_book()
 
         if isinstance(df, dict):
@@ -144,7 +147,7 @@ class DhanHelper:
         buy_qty = 0
         sell_qty = 0
 
-
+        trades = trades[['exchangeTime', 'transactionType', 'filledQty']][::-1]
         # Parse through DataFrame rows
         for index, row in trades.iterrows():
             if row['transactionType'] == 'BUY':
@@ -290,6 +293,28 @@ class DhanHelper:
         except Exception as e:
             print(f"Exception at getting Expiry list as {e}")
             return list()
+
+    def order_report(self) -> Tuple[Dict, Dict]:
+        '''
+        If watchlist has more than two stock, using order_report, get the order status and order execution price
+        order_report()
+        '''
+        try:
+            order_details = dict()
+            order_exe_price = dict()
+            time.sleep(1)
+            status_df = self.dhan_api.get_order_list()["data"]
+            status_df = pd.DataFrame(status_df)
+            if not status_df.empty:
+                status_df.set_index('orderId', inplace=True)
+                order_details = status_df['orderStatus'].to_dict()
+                order_exe_price = status_df['averageTradedPrice'].to_dict()
+
+            return order_details, order_exe_price
+        except Exception as e:
+            self.logger.exception(f"Exception in getting order report as {e}")
+            return dict(), dict()
+
     def cancel_all_orders(self) -> dict:
         try:
             order_details = dict()
