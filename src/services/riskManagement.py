@@ -121,6 +121,9 @@ class RiskManagement:
         return 0
 
     def sanityCheck(self, *args, **kwargs):
+        print(args)
+        print(kwargs)
+
         self.lastTradeTime = datetime.now()
         logger.info("running sanity check")
         thread1 = threading.Thread(target=self.killswitch)
