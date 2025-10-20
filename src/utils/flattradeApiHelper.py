@@ -38,24 +38,25 @@ def get_time(time_string):
 
     return time.mktime(data)
 
+
+def get_sid():
+    url = 'https://authapi.flattrade.in/auth/session'
+
+    headers = {
+        'Referer': 'https://auth.flattrade.in/',
+        'Origin': 'https://auth.flattrade.in'
+    }
+
+    response = requests.post(url, headers=headers)
+    sid = response.text
+    return sid
+
 class FlattradeAuthAutomation:
     def __init__(self, cred):
         self.cred = cred
 
-    def get_sid(self):
-        url = 'https://authapi.flattrade.in/auth/session'
-
-        headers = {
-            'Referer': 'https://auth.flattrade.in/',
-            'Origin': 'https://auth.flattrade.in'
-        }
-
-        response = requests.post(url, headers=headers)
-        sid = response.text
-        return sid
-
     def get_token(self):
-        sid = self.get_sid()
+        sid = get_sid()
         headers = {
             'Referer': 'https://auth.flattrade.in/',
             'Origin': 'https://auth.flattrade.in'
@@ -110,6 +111,95 @@ class FlattradeAuthAutomation:
         username = cred['user']
         auth_token = self.get_token()
         return api.set_session(userid= username, password = '', usertoken= auth_token)
+
+class FlattradeKillswitch():
+    def __init__(self, cred):
+        self.cred = cred
+        self.headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Origin": "https://auth.flattrade.in",
+            "Referer": "https://auth.flattrade.in/",
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) Python-requests",
+        }
+
+    def get_login_token(self):
+        url = 'https://authapi.flattrade.in/ftauth'
+        password = self.cred['pwd']
+        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        username = self.cred['user']
+        totp = pyotp.TOTP(self.cred['totp_key'])
+        otp_code = totp.now()
+
+        payload = {
+            "UserName": username,
+            "Rd": "",
+            "Password": password_hash,
+            "PAN_DOB": otp_code,
+            "App": "wall",
+            "ClientID": "",
+            "Key": "",
+            "APIKey": "",
+            "Sid": self.sid,
+            "Override": "",
+            "Source": "AUTHPAGE"
+        }
+
+
+        response = self.s.post(url, headers=self.headers, json=payload)
+        print(response.text)
+        url = response.json()['RedirectURL']
+        # print(f"redirect url is {url}")
+        token = url.split('token=')[1].split('&')[0]
+        login_id = url.split('LoginId=')[1].split('&')[0]
+        # print(token, login_id)
+        return token, login_id
+
+    def get_session_token(self):
+        token, login_id = self.get_login_token()
+        url = f'https://wallapi.flattrade.in/wall/token?token={token}&clientId={login_id}'
+        response = self.s.get(url, headers=self.headers)
+        token = response.json().get("token")
+        return token
+
+    def killswitch(self):
+        self.s = requests.Session()
+        self.sid = get_sid()
+        token = self.get_session_token()
+
+        url = 'https://wallapi.flattrade.in/wall/InsertSegmentDetails'
+
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:143.0) Gecko/20100101 Firefox/143.0',
+            'Accept': 'application/json',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate, br, zstd',
+            'Origin': 'https://wall.flattrade.in',
+            'Sec-GPC': '1',
+            'Connection': 'keep-alive',
+            'Referer': 'https://wall.flattrade.in/',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'same-site',
+            'DNT': '1',
+            'Content-Type': 'application/json'
+        }
+        payload =[
+            {"segment":"BFO","segmentDisplay":"BSE - Future & Option","status":"N","disabledDate":""},
+            {"segment":"NFO","segmentDisplay":"NSE - Future & Option","status":"N","disabledDate":""},
+            # {"segment": "BSE", "segmentDisplay": "BSE - Equity", "status": "N", "disabledDate": ""}
+        ]
+        response = self.s.post(url, json=payload, headers=headers)
+        print(f"Response: {response.text}")
+
+        url2 = 'https://wallapi.flattrade.in/wall/KillSwitch'
+
+        response = self.s.get(url2, headers=headers)
+        print("KillSwitch Response:")
+        print(f"Status Code: {response.status_code}")
+        print(f"Response: {response.text}")
+
+
 
 class NorenApiPy(NorenApi):
     def __init__(self):
