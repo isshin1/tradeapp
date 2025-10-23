@@ -166,6 +166,12 @@ class TradeManagement:
             self._misc = self.di_container.get('misc')
         return self._misc
 
+    @property
+    def riskManagementobj(self):
+        if self._risk_management is None:
+            self._risk_management = self.di_container.get('risk_management_service')
+        return self._risk_management
+
     def _get_api(self):
         """Return demo API if in demo mode, otherwise return real API"""
         if self.demo_mode:
@@ -592,8 +598,11 @@ class TradeManagement:
                     logger.info(f"{mode_prefix}token {token} removed from all trades with status {status}")
                     logger.info(f"{mode_prefix}All trades completed, final Trade is \n {self.tradeManager.trades}")
 
+
             except Exception as e:
                 logger.error(f"{mode_prefix}Exception in handling sell order {e}")
+
+            self.riskManagementobj.sanityCheck()
 
     def updateOpenOrders(self):
         api = self._get_api()
@@ -705,7 +714,9 @@ class TradeManagement:
         for token in self.tradeManager.trades:
             self.tradeManager.removeTrade(token)
 
-        self.flattrade_helper.exit_all_market_order()
+
+
+        # self.flattrade_helper.exit_all_market_order()
 
 
     def run_feed( self, time, expiry, tsym , dps = [] ):
