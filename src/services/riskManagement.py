@@ -15,52 +15,34 @@ class RiskManagement:
 
         # Get only the essential dependencies immediately
         self.config = self.di_container.get('config')
-        self.dhan_api = self.di_container.get('dhan_api')
-        self.dhan_helper = self.di_container.get('dhan_helper')
+        self.flattrade_api = self.di_container.get('flattrade_api')
+        self.flattrade_helper = self.di_container.get('flattrade_helper')
 
         self.pnl = 0
-        self.peakPnl = 0
-        self.tradeCount = 0
-        self.maxTradeCount = self.config['intraday']['maxTradeCount']
+        self.peak_pnl = 0
+        self.trade_count = 0
+        self.max_trade_count = self.config['intraday']['max_trade_count']
         # self.qty = self.get_buy_qty('NIFTY')
         self.maxLoss = self.config['intraday']['maxLoss']
         self.lastTradeTime = datetime.today().replace(hour=0, minute=0)
-        self.margin = self.dhan_helper.get_balance()
-
         # self.scheduler2 = threading.Timer(1, self.wait_timer)
         # self.scheduler2.start()
         logger.info(f"max loss is {self.maxLoss}")
 
-    def getQty(self, price):
-        qty = self.qty
-        # reduce quantity if margin is insufficient
-        while self.margin < price * qty and qty > 75:
-            qty -= 75
-
-        # if loss is already more than 10 points, reduce qty to half
-        if self.pnl  < -1 * self.qty * 10:
-            qty  =  qty /2 if qty %2 == 0 else (qty - 75) / 2
-
-        if qty < 75:
-            qty = 75
-
-        return qty
 
     def update(self):
-        self.tradeCount = self.dhan_helper.getTradeCount()
-        # self.pnl = self.dhan_helper.getPnl() - (40 + self.qty * 25 / 75) * self.tradeCount # TODO: change the brokerage function, appromixated currently
-        self.pnl = self.dhan_helper.getPnl()
+        self.trade_count = self.flattrade_helper.get_trade_count()
+        self.pnl = self.flattrade_helper.get_pnl()
 
-        if(self.pnl > self.peakPnl):
-            self.peakPnl = self.pnl
-        self.margin = self.dhan_helper.get_balance()
+        if(self.pnl > self.peak_pnl):
+            self.peak_pnl = self.pnl
 
     def maxLossCrossed(self):
         self.update()
-        if self.pnl - self.peakPnl <= -1 * self.maxLoss:
+        if self.pnl - self.peak_pnl <= -1 * self.maxLoss:
             logger.info("cumulative max loss crossed")
             return True
-        if self.tradeCount >= self.maxTradeCount:
+        if self.trade_count >= self.max_trade_count:
             logger.info("max trades crossed")
             return True
         if self.pnl  <= -1 * self.maxLoss :
@@ -88,15 +70,9 @@ class RiskManagement:
             logger.info("not trading session, skipping killswitch")
             return
 
-        # start_time = time(9, 0)
-        # end_time = time(15, 30)
-        #
-        # if datetime.now().time() < start_time or datetime.now().time() > end_time:
-        #     return
-
         self.update()
-        logger.info(f"turning killswitch on with trades {self.tradeCount} and pnl {self.pnl}")
-        self.dhan_helper.cancel_all_orders()
+        logger.info(f"turning killswitch on with trades {self.trade_count} and pnl {self.pnl}")
+        self.flattrade_helper.cancel_all_orders()
         self.dhan_helper.kill_switch('ON')
         if force:
             self.dhan_helper.kill_switch('OFF')

@@ -117,9 +117,9 @@ class TradeManagement:
         self.config = self.di_container.get('config')
         self.nifty_fut_token = self.config['nifty_fut_token']
 
-        self._shoonya_websocket = None
-        self._dhan_api = None
-        self._dhan_helper = None
+        self._flattrade_websocket = None
+        self._flattrade_api = None
+        self._flattrade_helper = None
         self._trade_manager = None
         self._decision_points = None
         self._misc = None
@@ -131,22 +131,22 @@ class TradeManagement:
             logger.info("🎭 DEMO MODE ENABLED - No real trades will be executed")
 
     @property
-    def shoonya_websocket(self):
-        if self._shoonya_websocket is None:
-            self._shoonya_websocket = self.di_container.get('shoonya_websocket')
-        return self._shoonya_websocket
+    def flattrade_websocket(self):
+        if self._flattrade_websocket is None:
+            self._flattrade_websocket = self.di_container.get('flattrade_websocket')
+        return self._flattrade_websocket
 
     @property
-    def dhan_api(self):
-        if self._dhan_api is None:
-            self._dhan_api = self.di_container.get('dhan_api')
-        return self._dhan_api
+    def flattrade_api(self):
+        if self._flattrade_api is None:
+            self._flattrade_api = self.di_container.get('flattrade_api')
+        return self._flattrade_api
 
     @property
-    def dhanHelper(self):
-        if self._dhan_helper is None:
-            self._dhan_helper = self.di_container.get('dhan_helper')
-        return self._dhan_helper
+    def flattrade_helper(self):
+        if self._flattrade_helper is None:
+            self._flattrade_helper = self.di_container.get('flattrade_helper')
+        return self._flattrade_helper
 
     @property
     def tradeManager(self):
@@ -170,19 +170,7 @@ class TradeManagement:
         """Return demo API if in demo mode, otherwise return real API"""
         if self.demo_mode:
             return self.demo_api
-        return self.dhan_api
-
-    #
-    # def setLtps(self, ltps):
-    #     self.tradeManager.ltps = ltps
-    # # subscribedTokens = []
-    #
-    #
-    # def subscribe(token):
-    #     if not token in subscribedTokens:
-    #         subscribedTokens.append(token);
-    #         self.shoonya_api.subscribe("NFO|" + str(token))
-
+        return self.flattrade_api
 
     def placeSl(self, trade:PartialTrade):
         if trade.status != 0:
@@ -193,74 +181,34 @@ class TradeManagement:
 
             logger.info(f"{mode_prefix}placing sl order for {trade.name} and token {trade.token}")
 
-            # res = self.shoonya_api.place_order(
-            #     "S", trade.prd, trade.exch, trade.tsym,
-            #     trade.qty, "STOP_LOSS", trade.slPrice, trade.slPrice + trade.diff
-            # )
-
-            # logger.info(f"{mode_prefix}placing sl order for {trade.name} and token {trade.token}")
-
-            res = api.place_order(security_id=trade.token, exchange_segment="NSE_FNO", transaction_type="SELL",
-                        quantity=trade.qty, order_type="STOP_LOSS", product_type=trade.prd, price=trade.slPrice - trade.diff, trigger_price=trade.slPrice )
+            res = self.flattrade_helper.place_order(
+                 order_type = 'S',
+                 product_type = trade.prd,
+                 exchange = trade.exch,
+                 trading_symbol = trade.tsym,
+                 quantity = trade.qty,
+                 price_type = 'SL-LMT',
+                 price = trade.slPrice - trade.diff,
+                 trigger_price = trade.slPrice
+            )
             logger.info(res)
-            # Todo: fix order status when rejected
 
-            if res['status'] != 'failure':
-                orderNumber = res['data']['orderId']
+            if res['stat'] == "Ok" and 'norenordno' in res :
+                orderNumber = res['norenordno']
                 trade.orderNumber = orderNumber
                 trade.status = 1
-                trade.orderType = "STOP_LOSS"
+                trade.orderType = "SL-LMT"
 
                 logger.info(f"{mode_prefix}{trade.name} placed sl at {trade.slPrice} for a fresh order with order number {orderNumber}")
                 logger.info(trade.__str__())
 
             else:
-                logger.error(
-                    "Placing order: security_id={}, exchange_segment={}, transaction_type={}, quantity={}, order_type={}, product_type={}, price={}, trigger_price={}",
-                                    trade.token, "NSE_FNO", "SELL" ,trade.qty, "STOP_LOSS", trade.prd,
-                                    trade.slPrice - trade.diff, trade.slPrice
-                )
-                logger.error(f"{mode_prefix}{trade.name} error in placing sl order {res['remarks']} ")
+                logger.error(f"{mode_prefix}{trade.name} error in placing sl order {res['emsg']} ")
 
             self.tradeManager.updatePartialTrade(trade)
         except Exception as e:
             logger.error(f"{mode_prefix}error in placing sl order {e}")
         # logger.info(f"placed sl for a fresh order for {trade.name} with order /number {orderNumber}")
-
-
-    def cancel_order_and_confirm(self, order_id, max_retries=10, delay=1):
-        """
-        Cancels the order and polls until it is confirmed canceled.
-        Returns True if successfully canceled, False otherwise.
-        """
-        try:
-            api = self._get_api()
-            mode_prefix = "DEMO: " if self.demo_mode else ""
-
-            logger.info(f"{mode_prefix}Cancelling stop-loss order: {order_id}")
-            res = api.cancel_order(order_id)
-            logger.info(res)
-            # res = 'CANCELLED'
-            if res != 'CANCELLED':
-                logger.info(f"{mode_prefix}Initial cancel request failed: {res}")
-                return False
-
-            # Poll until the order is confirmed as canceled
-            for attempt in range(max_retries):
-                status = api.get_order_status(order_id)
-                # logger.info(f"{mode_prefix}Order status: {status}")
-                if status == "CANCELLED":
-                    # logger.info(f"{mode_prefix}Order successfully cancelled.")
-                    return True
-                logger.info(
-                    f"{mode_prefix}Waiting for SL order to cancel... Attempt {attempt + 1} with status {status}")
-                time.sleep(delay)
-
-            logger.info(f"{mode_prefix}Failed to confirm order cancellation after retries.")
-            return False
-        except Exception as e:
-            logger.error(f"{mode_prefix}Exception while cancelling order: {e}")
-            return False
 
     def manageTrade(self, ltp, trade, current_time):
         if not trade.status == 1:
@@ -288,70 +236,56 @@ class TradeManagement:
                     logger.info(f"{mode_prefix}modifying sl order from STOP_LOSS to LIMIT")
                     logger.info(f"{mode_prefix}modifying trade {trade.__str__()}")
 
-                    # ret = self.dhan_api.Dhan.modify_order(order_id=trade.orderNumber, order_type="LIMIT", leg_name="ENTRY_LEG",
-                    #                                  quantity=trade.qty, price=trade.targetPrice, trigger_price=0, disclosed_quantity=0, validity='DAY')
+                    try:
+                        res = self.flattrade_helper.modify_order(
+                            exch= trade.exch,
+                            tsym = trade.tsym,
+                            norenordno = trade.orderNumber,
+                            newprice_type = 'LMT',
+                            qty = trade.qty,
+                            new_price = trade.targetPoints + trade.entryPrice
+                        )
 
-                    # res = self.dhan_api.cancel_order(OrderID=trade.orderNumber)
-                    # logger.info("order cancelled with response")
-                    # logger.info(f"{res}")
-                    # time.sleep(1.5)  #to make sure order is cancelled and new order doesnt have margin issues
-
-                    if self.cancel_order_and_confirm( trade.orderNumber):
-                        try:
-                            res = api.place_order(security_id=trade.token, exchange_segment="NSE_FNO", transaction_type="SELL",
-                                                            quantity=trade.qty, order_type="LIMIT", product_type=trade.prd,
-                                                            price=trade.targetPoints + trade.entryPrice , trigger_price=0)
+                        logger.info(res)
+                        if res['stat'] == "Ok" and 'norenordno' in res:
+                            logger.info(f"{mode_prefix}modified placed {trade.name} limit order")
                             logger.info(res)
-                            if res['status'] != 'success':
-                                logger.info(
-                                    f"{mode_prefix}error in placing new limit order after cancelling sl order {res.get('remarks')}")
-                            else:
-                                logger.info(f"{mode_prefix}modified placed {trade.name} limit order")
-                                logger.info(res)
-                                trade.orderNumber = res['data']['orderId']
-                                trade.orderType = "LMT"
-                                logger.info(
-                                    f"{mode_prefix}{trade.name} sl order modified from STOP_LOSS to LMT with target {trade.entryPrice + trade.targetPoints}")
-                        except Exception as e:
-                            logger.error(f"{mode_prefix}failed to place limit convert order {e}")
-                    else:
-                        logger.error(f"{mode_prefix}Could not cancel SL order, aborting limit order placement.")
-                        return None
-                    # else:
-                    #     trade.orderNumber = res['data']['orderId']
+                            trade.orderNumber = res['data']['orderId']
+                            trade.orderType = "LMT"
+                            logger.info(
+                                f"{mode_prefix}{trade.name} sl order modified from STOP_LOSS to LMT with target {trade.entryPrice + trade.targetPoints}")
+                        else:
+                            logger.info(
+                                f"{mode_prefix}error in placing new limit order after cancelling sl order {res['emsg']} ")
 
+                    except Exception as e:
+                        logger.error(f"{mode_prefix}failed to place limit convert order {e}")
 
-                    # trade.orderType = "LMT"
-                    # trade.orderNumber = res['data']['orderId']
-                    # logger.info(f"{trade.name} sl order modified from STOP_LOSS to LMT with target {trade.entryPrice + trade.targetPoints}")
                 if points <= 1.0 / 3 * targetPoints and trade.orderType == "LMT":
                     logger.info(f"{mode_prefix}modifying target order from LIMIT to STOP_LOSS")
 
-                    if self.cancel_order_and_confirm(trade.orderNumber):
-                        try:
-                            res = api.place_order(
-                                security_id=trade.token,
-                                exchange_segment="NSE_FNO",
-                                transaction_type="SELL",
-                                quantity=trade.qty,
-                                order_type="STOP_LOSS",
-                                product_type=trade.prd,
-                                price=trade.slPrice - trade.diff,
-                                trigger_price=trade.slPrice
-                            )
-                            if res['status'] != 'success':
-                                logger.info(f"{mode_prefix}error in placing new sl order after cancelling limit order {res.get('remarks')}")
-                            else:
-                                logger.info(f"{mode_prefix}modified placed {trade.name} sl order")
-                                logger.info(res)
-                                trade.orderNumber = res['data']['orderId']
-                                trade.orderType = "STOP_LOSS"
-                                logger.info(f"{mode_prefix}{trade.name} limit order modified from LIMIT to STOP_LOSS with sl {trade.slPrice}")
-                        except Exception as e:
-                            logger.error(f"{mode_prefix}failed to place sl convert order {e}")
-                    else:
-                        logger.error(f"{mode_prefix}Could not cancel LIMIT order, aborting SL order placement.")
-                        return None
+                    try:
+                        res = self.flattrade_helper.modify_order(
+                            exch=trade.exch,
+                            tsym=trade.tsym,
+                            norenordno=trade.orderNumber,
+                            new_price_type='SL-LMT',
+                            qty=trade.qty,
+                            new_price=trade.slPrice - trade.diff,
+                            new_trigger_price = trade.slPrice
+
+                        )
+                        if res['stat'] == "Ok" and 'norenordno' in res:
+                            logger.info(f"{mode_prefix}modified placed {trade.name} sl order")
+                            logger.info(res)
+                            trade.orderNumber = res['data']['orderId']
+                            trade.orderType = "STOP_LOSS"
+                            logger.info(f"{mode_prefix}{trade.name} limit order modified from LIMIT to STOP_LOSS with sl {trade.slPrice}")
+                        else:
+                            logger.info(
+                                f"{mode_prefix}error in placing new limit order after cancelling sl order {res['emsg']} ")
+                    except Exception as e:
+                        logger.error(f"{mode_prefix}failed to place sl convert order {e}")
 
 
                 if ltp >= trade.entryPrice +  trade.targetPoints   :
@@ -376,20 +310,20 @@ class TradeManagement:
                     if new_sl_time != None and new_sl_time in df['time'].values:
                         new_sl = df[df['time'] == new_sl_time]['low'].values[0]
                     else:
-                        new_sl = trade.slPrice - 3
+                        new_sl = current_trailing_sl - 3
 
-                    if new_sl > trade.slPrice + 5:
-                        logger.info(f"{mode_prefix}{trade.name} modifying major swing point sl from {trade.slPrice} to {new_sl} at candle {new_sl_time}")
-                        trade.slPrice = new_sl
+                    if new_sl > current_trailing_sl + 5:
+                        logger.info(f"{mode_prefix}{trade.name} modifying major swing point sl from {current_trailing_sl} to {new_sl} at candle {new_sl_time}")
+                        current_trailing_sl = new_sl
             except Exception as e:
                 logger.error(f"{mode_prefix}error in fetching last swing point at time {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
                 logger.error(e)
 
             ## (B) keeping sl 20% below trade peak points
             new_sl = round(ltp * 0.8, 1)
-            if new_sl > trade.slPrice + 5:
-                logger.info(f"{mode_prefix}{trade.name} modifying sl from {trade.slPrice} to {new_sl} at time {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
-                trade.slPrice = new_sl
+            if new_sl > current_trailing_sl + 5:
+                logger.info(f"{mode_prefix}{trade.name} modifying sl from {current_trailing_sl} to {new_sl} at time {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
+                current_trailing_sl = new_sl
 
             ## (C) modify sl 3 point below crossed dp
 
@@ -402,10 +336,10 @@ class TradeManagement:
                                                                          self.decisionPoints.decisionPoints, trade)
                     if new_sl_time != None and new_sl_time in df['time'].values:
                         new_sl = df[df['time'] == new_sl_time]['low'].values[0]
-                        if new_sl > trade.slPrice + 5:
+                        if new_sl > current_trailing_sl + 5:
                             logger.info(
-                                f"{mode_prefix}{trade.name} modifying sl to below {dp_price} from {trade.slPrice} to {new_sl} with candle {new_sl_time} at time {current_time}")
-                            trade.slPrice = new_sl
+                                f"{mode_prefix}{trade.name} modifying sl to below {dp_price} from {current_trailing_sl} to {new_sl} with candle {new_sl_time} at time {current_time}")
+                            current_trailing_sl = new_sl
             except Exception as e:
                 logger.error(
                     f"{mode_prefix}error in getting price below dp at time {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
@@ -415,16 +349,17 @@ class TradeManagement:
             if current_trailing_sl != trade.slPrice:
                 logger.info(
                     f"{mode_prefix}modifying trailing sl from {current_trailing_sl} to {trade.slPrice} at time {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-                res = api.modify_order(
-                    order_id=trade.orderNumber,
-                    order_type="STOP_LOSS",
-                    leg_name="ENTRY_LEG",
-                    quantity=trade.qty,
-                    price=trade.slPrice,
-                    trigger_price=trade.slPrice + 0.5,
-                    disclosed_quantity=0,
-                    validity='DAY'
+                res = self.flattrade_helper.modify_order(
+                    exch=trade.exch,
+                    tsym=trade.tsym,
+                    norenordno=trade.orderNumber,
+                    new_price_type='SL-LMT',
+                    qty=trade.qty,
+                    new_price=current_trailing_sl ,
+                    new_trigger_price=current_trailing_sl + trade.diff
+
                 )
+                trade.slPrice = current_trailing_sl
                 logger.info(res)
 
             if ltp < trade.slPrice:
@@ -445,20 +380,17 @@ class TradeManagement:
             api = self._get_api()
             mode_prefix = "DEMO: " if self.demo_mode else ""
 
-            if self.cancel_order_and_confirm(trade.orderNumber):
-                logger.info(f"{mode_prefix}sl crossed, sl order {trade.orderNumber} is cancelled")
-                ret = api.place_order(
-                    security_id=trade.token,
-                    exchange_segment="NSE_FNO",
-                    transaction_type="SELL",
-                    quantity=trade.qty,
-                    order_type="MARKET",
-                    product_type=trade.prd,
-                    price=0
-                )
-                logger.info(ret)
-                trade.status = 2
-                self.tradeManager.updatePartialTrade(trade)
+            res = self.flattrade_helper.modify_order(
+                exch=trade.exch,
+                tsym=trade.tsym,
+                norenordno=trade.orderNumber,
+                new_price_type='MKT',
+                qty=trade.qty,
+                new_price=0.0
+            )
+            logger.info(res)
+            trade.status = 2
+            self.tradeManager.updatePartialTrade(trade)
         except Exception as e:
             logger.error(f"{mode_prefix}error in exiting all trades {e}")
 
@@ -509,15 +441,14 @@ class TradeManagement:
 
             future_ltp = self.tradeManager.ltps[self.nifty_fut_token]
 
-            qty = order_update['quantity']
-            entryPrice = order_update['tradedPrice']
-            tsym = order_update['displayName']
-            product = order_update['product']
-            prd = self.dhanHelper.getProductType(product)
-            instrument = order_update['instrument']
+            qty = int(order_update['fillshares'])
+            entryPrice = float(order_update['flprc'])
+            tsym = order_update['tsym']
+            prd = order_update['pcode']
+            instrument = None
 
             slPrice, maxSlPrice, minLotSize, diff, target1, target2 = self.misc.get_sl_and_max_sl_price(instrument, tsym)
-            optionType = tsym.split(' ')[-1]
+            optionType = tsym[-6]
 
             half = qty // 2
             qty2 = (half // minLotSize) * minLotSize
@@ -543,7 +474,7 @@ class TradeManagement:
                 logger.info(f"trade2 added with qty {qty2}")
                 logger.info(f"{trade2}")
 
-            self.shoonya_websocket.subscribe(token)
+            self.flattrade_websocket.subscribe(token)
             websocketService.update_targets(target1, target2)
 
         except Exception as e:
@@ -554,9 +485,6 @@ class TradeManagement:
     def handle_buy_order(self, token, order_update):
         try:
             if not self.tradeManager.isTradeActive(token):
-                if 'super' in order_update['remarks'].lower() :
-                    logger.info(f"super order, skipping")
-                    return
                 mode_prefix = "DEMO: " if self.demo_mode else ""
                 logger.info(f"{mode_prefix}starting a fresh trade at {datetime.now()} of token {token}")
                 self.createTrade(token, order_update)
@@ -586,15 +514,14 @@ class TradeManagement:
                             else:
                                 logger.info(f"{mode_prefix}modifying sl for {partial_trade.name}")
                                 future = executor.submit(
-                                    api.modify_order,
-                                    order_id=partial_trade.orderNumber,
-                                    order_type="STOP_LOSS",
-                                    leg_name="ENTRY_LEG",
-                                    quantity=partial_trade.qty,
-                                    price=partial_trade.slPrice - partial_trade.diff,
-                                    trigger_price=partial_trade.slPrice,
-                                    disclosed_quantity=0,
-                                    validity='DAY'
+                                    self.flattrade_helper.modify_order,
+                                    exch=partial_trade.exch,
+                                    tsym=partial_trade.tsym,
+                                    norenordno=partial_trade.orderNumber,
+                                    new_price_type='SL-LMT',
+                                    qty=partial_trade.qty,
+                                    new_price=partial_trade.slPrice - partial_trade.diff,
+                                    new_trigger_price=partial_trade.slPrice
                                 )
                                 futures.append(future)
                     except Exception as e:
@@ -678,26 +605,26 @@ class TradeManagement:
         update_order_feed(openOrders)
 
     def handle_order(self, order_update: dict):
-        token = order_update['securityId']
+        token = self.misc.get_token(order_update['tsym'], order_update['exch'])
 
-        if order_update['status'] == 'Traded' and order_update['txnType'] == 'B':
+        if order_update['status'] == 'COMPLETE' and order_update['trantype'] == 'B':
             self.handle_buy_order(token, order_update)
 
-        if order_update['txnType'] == 'S':
+        if order_update['trantype'] == 'S':
             self.handle_sell_order(token, order_update)
 
     def on_order_update(self, order_data: dict):
         """Optional callback function to process order data"""
         mode_prefix = "DEMO: " if self.demo_mode else ""
         print(f"{mode_prefix}new order received")
-        order_update = order_data.get("Data", {})
-        logger.info(order_update)
+        # order_update = order_data.get("Data", {})
+        logger.info(order_data)
 
         # ignore orders other than nifty
-        if order_update['displayName'].split(' ')[0] == 'NIFTY':
-            with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-                executor.submit(self.handle_order, order_update)
-        self.updateOpenOrders()
+        # if order_update['displayName'].split(' ')[0] == 'NIFTY':
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+            executor.submit(self.handle_order, order_data)
+        # self.updateOpenOrders() TODO: fix orders from flattrade
 
     def updateTargets(self, targets):
         #TODO: dont allow target modification after 3 minutes  ?
@@ -749,16 +676,14 @@ class TradeManagement:
 
                 # change limit order price if already in place
                 if trade.orderType == "LMT":
-                    # ret = self.dhan_api.Dhan.modify_order(order_id=trade.orderNumber, order_type="LIMIT", quantity=trade.qty,
-                    #                                  price=trade.targetPoints + trade.entryPrice)
-                    ret = api.modify_order(
-                    order_id = trade.orderNumber,
-                    order_type = "LIMIT",
-                    leg_name = "ENTRY_LEG",
-                    quantity = trade.qty,
-                    price = trade.targetPoints + trade.entryPrice,
-                    disclosed_quantity = 0,
-                    validity = 'DAY')
+                    ret = self.flattrade_helper.modify_order(
+                        exch=trade.exch,
+                        tsym=trade.tsym,
+                        norenordno=trade.orderNumber,
+                        new_price_type='LIMIT',
+                        qty=trade.qty,
+                        new_price= trade.targetPoints + trade.entryPrice,
+                    )
 
                     logger.info(
                         "{}, LMT order of trade {} got modified from {} to {}".format(mode_prefix, trade.name, entryPrice + initialTargetPoints,
@@ -780,41 +705,7 @@ class TradeManagement:
         for token in self.tradeManager.trades:
             self.tradeManager.removeTrade(token)
 
-        # cancel all open orders
-        data = api.get_order_list()["data"]
-        if data is None or len(data) == 0:
-            pass
-        else:
-            orders = pd.DataFrame(data)
-            if not orders.empty:
-                trigger_pending_orders = orders.loc[orders['orderStatus'] == 'PENDING']
-                open_orders = orders.loc[orders['orderStatus'] == 'TRANSIT']
-                for index, row in trigger_pending_orders.iterrows():
-                    response = api.cancel_order(row['orderId'])
-                for index, row in open_orders.iterrows():
-                    response = api.cancel_order(row['orderId'])
-
-        position_dict = api.get_positions()["data"]
-        positions_df = pd.DataFrame(position_dict)
-        if positions_df.empty:
-            return
-        positions_df['netQty'] = positions_df['netQty'].astype(int)
-        bought = positions_df.loc[positions_df['netQty'] > 0]
-
-
-        for index, row in bought.iterrows():
-            qty = int(row["netQty"])
-            tsym = row["tradingSymbol"]
-            token = int(row["securityId"])
-            entryPrice = float(row["costPrice"]) # TODO: is this correct field ?
-            if 'NIFTY' not in tsym:
-                continue
-
-            prd = "INTRADAY"
-            order_update = {'quantity':qty, 'tradedPrice':entryPrice, 'displayName':tsym, 'product':  prd }
-            order_update['instrument'] = 'OPTIDX' if 'FUT' not in tsym else 'FUTIDX'
-            self.createTrade(token, order_update)
-            break
+        self.flattrade_helper.exit_all_market_order()
 
 
     def run_feed( self, time, expiry, tsym , dps = [] ):

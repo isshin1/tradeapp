@@ -14,7 +14,7 @@ import requests
 from conf.config import BASE_DIR, get_date_folders, config
 from conf.dhanWebsocket import DhanWebsocket
 from conf.logging_config import logger
-from conf.shoonyaWebsocket import ShoonyaWebsocket
+from conf.flattradeWebsocket import FlattradeWebsocket
 from conf.websocketService import ConnectionManager
 from models.DecisionPoints import DecisionPoints
 from models.TradeManager import TradeManager
@@ -27,7 +27,7 @@ from utils.shoonyaHelper import ShoonyaHelper
 from utils.misc import Misc
 from utils.shoonyaApiHelper import ShoonyaApiPy
 from utils.flattradeApiHelper import NorenApiPy
-from utils.flattradeApiHelper import FlattradeAuthAutomation
+from utils.flattradeHelper import FlattradeAuthAutomation, FlattradeHelper
 from utils.dhanHelper import get_access_token
 class DIContainer:
     """Simple Dependency Injection Container"""
@@ -91,32 +91,19 @@ class AppInitializer:
             logger.error(f"Failed to create Dhan context: {e}")
             raise
 
-    def _create_shoonya_api(self, cred):
-        """Factory method to create Shoonya API client"""
-        try:
-            return self._create_flattrade_api()
-            shoonya_api = ShoonyaApiPy()
-            cred = config['shoonya']
-            totp = pyotp.TOTP(cred['totp_key']).now()
-            ret = shoonya_api.login(userid=cred['user'], password=cred['pwd'], twoFA=totp,
-                                    vendor_code=cred['vc'], api_secret=cred['api_key'], imei=cred['imei'])
-            if ret is None:
-                raise Exception(f"Shoonya Login failed")
-            logger.info("Shoonya API client created successfully")
-            return shoonya_api
-        except Exception as e:
-            logger.error(f"Failed to create Shoonya API client: {e}")
-            raise
+    def _create_flattrade_helper(self, cred=None):
+        """Factory method to create Flattrade API client"""
+        if cred == None:
+            # config = self.di_container.get('config')
+            cred = config['flattrade']
 
-    def _create_shoonya_helper(self):
-        """Factory method to create Dhan API client"""
         try:
-            shoonya_api = self.di_container.get('shoonya_api')
-            dhanHelper = ShoonyaHelper(shoonya_api)
-            logger.info("Shoonya Helper client created successfully")
-            return dhanHelper
+            flattrade_api = self.di_container.get('flattrade_api')
+            flattradeHelper = FlattradeHelper(flattrade_api, cred)
+            logger.info("Flattrade Helper client created successfully")
+            return flattradeHelper
         except Exception as e:
-            logger.error(f"Failed to create Shoonya helper client: {e}")
+            logger.error(f"Failed to create flattrade helper client: {e}")
             raise
 
     def _create_flattrade_api(self, cred=None):
@@ -134,132 +121,10 @@ class AppInitializer:
             logger.error(f"Failed to create flattrade API client: {e}")
             raise
 
-    def _create_dhan_api(self, dhan_context):
-        """Factory method to create Dhan API client"""
-
-        def checkTokenValidity( token):
-            url = 'https://api.dhan.co/v2/profile'
-            headers = {'access-token': token}
-
-            response = requests.get(url, headers=headers)
-            res = response.json()
-            if 'errorType' in res:
-                logger.error("Token is invalid")
-                raise ValueError("access token is invalid")
-            logger.info(response.status_code)
-            logger.info("access token is valid")
-
-        try:
-            dhan_api = dhanhq(dhan_context)
-            checkTokenValidity(dhan_context.access_token)
-            logger.info("Dhan API client created successfully")
-            return dhan_api
-        except Exception as e:
-            logger.error(f"Failed to create Dhan API client: {e}")
-            raise
-
-    def _get_dhan_access_token(self, config, token_id):
-        """Get Dhan access token using client credentials flow"""
-
-        app_id = str(config['app_id'])
-        app_secret = str(config['app_secret'])
-
-        try:
-            url = f"https://auth.dhan.co/app/consumeApp-consent?tokenId={token_id}"
-            headers = {
-                "app_id": app_id,
-                "app_secret": app_secret
-            }
-            response = requests.post(url, headers=headers)
-            response = response.json()
-            return response['accessToken']
-        except Exception as e:
-            logger.error(f"Failed to create Dhan helper client: {e}")
-            raise
-
-    def _create_dhan_helper(self):
-        """Factory method to create Dhan API client"""
-        try:
-            dhan_api = self.di_container.get('dhan_api')
-            dhanHelper = DhanHelper(dhan_api)
-            logger.info("Dhan Helper client created successfully")
-            return dhanHelper
-        except Exception as e:
-            logger.error(f"Failed to create Dhan helper client: {e}")
-            raise
-
-    def _get_concent_id(self, client_id, app_id, app_secret):
-        url = f"https://auth.dhan.co/app/generate-consent?client_id={client_id}"
-
-        headers = {
-            "app_id": app_id,
-            "app_secret": app_secret
-        }
-
-        response = requests.post(url, headers=headers)
-
-        consentAppId = response.json()['consentAppId']
-        return consentAppId
-
-    def _get_dhan_access_token_id(self, config):
-
-        client_id = str(config['client_id'])
-        app_id = str(config['app_id'])
-        app_secret = str(config['app_secret'])
-        phone_number = str(config['phone_number'])
-        totp_secret = str(config['totp_secret'])
-        pin = str(config['pin'])
-
-        consentAppId = self._get_concent_id(client_id, app_id, app_secret)
-        automation = DhanAuthAutomation(headless=False)
-        token_id = automation.get_auth_token(
-            login_url=f"https://auth.dhan.co/login/consentApp-login?consentAppId={consentAppId}",
-            mobile_number=phone_number,
-            totp_secret=totp_secret,
-            pin=pin
-        )
-        return token_id
-
-    def setup_dhan_services(self, config):
-        """Setup Dhan context and API client"""
-        try:
-            # Create and store Dhan context
-            client_id = str(config['client_id'])
-            # access_token = str(config.get('access_token')) or self._get_dhan_access_token(app_id, app_secret, token_id)
-
-            access_token = str(config.get('access_token', ''))
-            if access_token == '':
-                # token_id = self._get_dhan_access_token_id(config)
-                # access_token = self._get_dhan_access_token(config, token_id)
-                access_token = get_access_token(config)
-            self.dhan_context = self._create_dhan_context(client_id, access_token)
-            self.dhan_api = self._create_dhan_api(self.dhan_context)
-
-            self.di_container.register_singleton('dhan_context', self.dhan_context)
-            self.di_container.register_singleton('dhan_api', self.dhan_api)
-
-            self.dhan_helper = self._create_dhan_helper()
-            self.di_container.register_singleton('dhan_helper', self.dhan_helper)
-
-            logger.info("Dhan services setup completed and registered in DI container")
-
-        except Exception as e:
-            logger.error(f"Failed to setup Dhan services: {e}")
-            raise
-
-    def setup_shoonya_services(self, cred):
-        self.shoonya_api = self._create_shoonya_api(cred)
-        self.di_container.register_singleton('shoonya_api', self.shoonya_api)
-
-        self.shoonya_helper = self._create_shoonya_helper()
-        self.di_container.register_singleton('shoonya_helper', self.shoonya_helper)
-        # self.shoonya_helper.killswitch()
-        logger.info("Shoonya services setup completed and registered in DI container")
-
     def setup_flattrade_services(self, cred):
         self.flattrade_api = self._create_flattrade_api(cred)
         self.di_container.register_singleton('flattrade_api', self.flattrade_api)
-        self.shoonya_helper = self._create_shoonya_helper()
+        self.flattrade_helper = self._create_flattrade_helper()
         self.di_container.register_singleton('flattrade_helper', self.flattrade_helper)
         # self.shoonya_helper.killswitch()
         logger.info("flattrade services setup completed and registered in DI container")
@@ -334,38 +199,15 @@ class AppInitializer:
             logger.error(f"Failed to create OrderManagementService: {e}")
             raise
 
-
-    def _create_dhan_websocket(self):
-        print("Testing dhan_websocket creation...")
-        config = self.di_container.get('config')
-        """Initialize and start Dhan WebSocket connections"""
-        # if not self.trade_management:
-        #     # Try to get trade management from DI container
-        #     try:
-        #         self.trade_management = self.di_container.get('trade_management_service')
-        #     except ValueError:
-        #         raise ValueError("Trade management service must be registered in DI container")
-
+    def _create_flattrade_websocket(self):
+        print("Testing flattrade_websocket creation...")
         try:
-            self.dhan_ws = DhanWebsocket(self.di_container)
-            self.dhan_ws.start_dhan_websocket()
-            logger.info("Dhan WebSocket services started successfully")
-            return self.dhan_ws
+            self.flattrade_ws = FlattradeWebsocket(self.di_container)
+            self.flattrade_ws.start_flattrade_websocket()
+            logger.info("Flattrade WebSocket services started successfully")
+            return self.flattrade_ws
         except Exception as e:
-            logger.error(f"Failed to initialize Dhan WebSocket: {e}")
-            raise
-
-    def _create_shoonya_websocket(self):
-        print("Testing shoonya_websocket creation...")
-        config = self.di_container.get('config')
-
-        try:
-            self.shoonya_ws = ShoonyaWebsocket(self.di_container)
-            self.shoonya_ws.start_shoonya_websocket()
-            logger.info("Shoonya WebSocket services started successfully")
-            return self.shoonya_ws
-        except Exception as e:
-            logger.error(f"Failed to initialize Shoonya WebSocket: {e}")
+            logger.error(f"Failed to initialize Flattrade WebSocket: {e}")
             raise
 
 
@@ -385,12 +227,10 @@ class AppInitializer:
         nifty_fut_symbol = "NIFTY" + datetime.strftime(nifty_monthly_expiry, " %b ").upper() + "FUT"
         nifty_fut_symbol_shoonya = "NIFTY" + nifty_monthly_expiry.strftime("%d%b%y").upper() + "F"
         config_copy['nifty_fut_symbol'] = nifty_fut_symbol
-        config_copy['nifty_fut_token'] = str(misc.getToken(tsym = nifty_fut_symbol_shoonya, exchange = 'NFO' ))
+        config_copy['nifty_fut_token'] = str(misc.get_token(tsym = nifty_fut_symbol_shoonya, exchange = 'NFO' ))
 
         config_copy['nifty_monthly_expiry'] = nifty_monthly_expiry
         config_copy['nifty_weekly_expiry'] = nifty_weekly_expiry
-
-
 
         return config_copy
 
@@ -438,10 +278,8 @@ class AppInitializer:
                                                lambda: self._create_option_update_service())
             self.di_container.register_factory('order_management_service',
                                                lambda: self._create_order_management_service())#
-            self.di_container.register_factory('shoonya_websocket',
-                                                 lambda: self._create_shoonya_websocket())
-            self.di_container.register_factory('dhan_websocket',
-                                                 lambda: self._create_dhan_websocket())
+            self.di_container.register_factory('flattrade_websocket',
+                                                 lambda: self._create_flattrade_websocket())
         except Exception as  e:
             print(f"Registration failed: {e}")
             import traceback
@@ -457,9 +295,9 @@ class AppInitializer:
             self.setup_directories()
             self.setup_python_path()
 
-            self.setup_shoonya_services(config['shoonya'])
-            self.setup_dhan_services(config['dhan'])
-            # self.setup_flattrade_services(config['flattrade'])
+            # self.setup_shoonya_services(config['shoonya'])
+            # self.setup_dhan_services(config['dhan'])
+            self.setup_flattrade_services(config['flattrade'])
 
             # Register all dependencies
             self.register_dependencies(config)

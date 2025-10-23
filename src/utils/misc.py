@@ -17,6 +17,7 @@ import mibian
 import zipfile, requests, io
 from conf.config import BASE_DIR
 # from conf.config import logger
+import re
 pd.set_option('mode.chained_assignment', None)
 
 current_date = time.strftime("%Y-%m-%d")
@@ -262,7 +263,7 @@ class Misc:
         return
 
 
-    def getToken(self, tsym, exchange):
+    def get_token(self, tsym, exchange):
         df = self.get_df(exchange)
         df = df[df.TradingSymbol == tsym]
         if not df.empty:
@@ -277,7 +278,7 @@ class Misc:
         return
 
 
-    def getSymbol(self, token):
+    def get_trading_symbol(self, token):
         df = pd.read_csv(self.nfo_file)
         token = int(token)
         df = df[df.Token == int(token)]
@@ -310,7 +311,7 @@ class Misc:
 
     def getOptionDelta(self, df, ltps, indexDict, token):
         token = int(token)
-        tsym = self.getSymbol(df, token)
+        tsym = self.get_trading_symbol(df, token)
         option_type = tsym[-6]
         strike = int(tsym[-5:])
 
@@ -394,7 +395,13 @@ class Misc:
         container.stop()
 
     def get_sl_and_max_sl_price(self, instrument, tsym):
-        INDEX = tsym.split(' ')[0]
+        INDEX = re.match(r'^[A-Za-z]+', tsym).group(0)
+        instrument_match = re.search(r'([A-Za-z])\d+$', tsym).group(1)
+        if instrument_match == 'F':
+            instrument = 'FUTIDX'
+        else:
+            instrument = 'OPTIDX'
+
 
         # Find the specific index configuration
         index_config = None

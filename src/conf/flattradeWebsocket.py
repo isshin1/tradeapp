@@ -14,13 +14,13 @@ from conf.config import get_date_folders
 
 # from services.charts import chart
 # update nifty spot price in consul via feed
-class ShoonyaWebsocket:
+class FlattradeWebsocket:
     def __init__(self, di_container ):
         self.di_container = di_container
 
         self.config = self.di_container.get('config')
         self.flattrade_api = self.di_container.get('flattrade_api')
-        self.dhan_helper = self.di_container.get('dhan_helper')
+        self.flattrade_helper = self.di_container.get('flattrade_helper')
         self.tradeManager = self.di_container.get('trade_manager')
         self.misc = self.di_container.get('misc')
 
@@ -105,8 +105,8 @@ class ShoonyaWebsocket:
         UPDATE = False
         if 'tk' in tick_data:
             token = tick_data['tk']
-            timest = datetime.fromtimestamp(int(tick_data['ft'])).isoformat()
-            epoch = tick_data.get("ft")
+            epoch = int(tick_data.get("ft", int(time.time())))
+            timest = datetime.fromtimestamp(epoch).isoformat()
             feed_data = {'tt': timest, 'ft': float(epoch)}
 
             if 'lp' in tick_data:
@@ -137,7 +137,7 @@ class ShoonyaWebsocket:
                             with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
                                 futures = []
                                 if int(token) != 26000:
-                                    feed_data['Tsym'] = self.dhan_helper.get_trading_symbol(int(token))
+                                    feed_data['Tsym'] = self.misc.get_trading_symbol(int(token))
                                 else:
                                     feed_data['Tsym'] = "Nifty 50"
                                 futures.append(executor.submit(self.writeFeed, feed_data['tt'], token, feed_data['Tsym'],  ltp)) # write feed to a file
@@ -158,7 +158,8 @@ class ShoonyaWebsocket:
                             tick = {'time': timest, 'price': float(feed_data['ltp']), 'volume': 0}
                             # chart.update_from_tick(pd.Series(tick))
     def update_orders(self, order_update):
-        pass
+        self.trade_management.on_order_update(order_update)
+
     def event_handler_order_update(self, order_update):
         logger.debug(f"order feed {order_update}")
         try:
@@ -182,7 +183,7 @@ class ShoonyaWebsocket:
 
     def subscribe(self, token, exchange="NFO"):
         # tsym = self.misc.getSymbol(token)
-        tsym = self.dhan_helper.get_trading_symbol(int(token))
+        tsym = self.misc.get_trading_symbol(int(token))
         self.flattrade_api.subscribe(exchange + "|" + str(token))
         logger.info(f"subscribed to {tsym} {token}")
 

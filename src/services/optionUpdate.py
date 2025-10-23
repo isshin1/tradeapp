@@ -14,13 +14,10 @@ class OptionUpdate:
     # def __init__(self, config, dhan_api, shoonya_api,  misc, tradeManagement, tradeManager, nifty_fut_token, nifty_fut_symbol):
     def __init__(self, di_container):
         self.di_container = di_container
-        self.dhan_websocket = self.di_container.get('dhan_websocket')
-        self.shoonya_websocket = self.di_container.get('shoonya_websocket')
+        self.flattrade_websocket = self.di_container.get('flattrade_websocket')
 
         self.config = self.di_container.get('config')
-        self.dhan_api = self.di_container.get('dhan_api')
-        self.shoonya_api = self.di_container.get('shoonya_api')
-        self.dhan_helper = self.di_container.get('dhan_helper')
+        self.flattrade_api = self.di_container.get('flattrade_api')
         self.trade_manager = self.di_container.get('trade_manager')
         self.decision_points = self.di_container.get('decision_points_manager')
         misc = self.di_container.get('misc')
@@ -43,16 +40,17 @@ class OptionUpdate:
         logger.info(f"using expiry {self.expiry_date}")
 
     def getLtp(self):
-        res = self.shoonya_api.get_quotes(exchange="NSE", token='26000')
+        res = self.flattrade_api.get_quotes(exchange="NSE", token='26000')
         ltp =  int(float(res['lp']))
         return round(ltp / 50) * 50
 
     def getTokens(self, ltp):
         spot_price = round(ltp / 50) * 50
-        self.callSymbol = "NIFTY " + self.expiry_date.strftime("%d %b ").upper() + str(spot_price) + " CALL"
-        self.putSymbol = "NIFTY " +  self.expiry_date.strftime("%d %b ").upper() + str(spot_price) + " PUT"
-        self.callToken = self.dhan_helper.get_security_id(self.callSymbol, "NFO")
-        self.putToken = self.dhan_helper.get_security_id(self.putSymbol, "NFO")
+        self.callSymbol = "NIFTY" + self.expiry_date.strftime('%d%b%y').upper()  + "C" + str(spot_price)
+        self.putSymbol = "NIFTY" +  self.expiry_date.strftime('%d%b%y').upper() + "P" + str(spot_price)
+
+        self.callToken = self.misc.get_token(self.callSymbol, "NFO")
+        self.putToken = self.misc.get_token(self.putSymbol, "NFO")
 
     def  getCallDelta(self, strike_price, spot_price):
         current_date = datetime.now().strftime('%d-%m-%y')
@@ -110,11 +108,11 @@ class OptionUpdate:
         flag = 0
         if callPrice != self.callPrice:
             self.callPrice = callPrice
-            self.callSymbol = "NIFTY " +  self.expiry_date.strftime("%d %b ").upper() + str(callPrice) + " CALL"
+            self.callSymbol = "NIFTY" + self.expiry_date.strftime('%d%b%y').upper() + "C" + str(callPrice)
             # self.shoonya_api.unsubscribe("NFO|"+ str(self.callToken))
-            self.callToken = self.dhan_helper.get_security_id(self.callSymbol, "NFO")
+            self.callToken = self.misc.get_token(self.callSymbol, "NFO")
             if self.callToken not in self.subscribedTokens:
-                self.shoonya_websocket.subscribe(str(self.callToken))
+                self.flattrade_websocket.subscribe(str(self.callToken))
                 # self.dhan_websocket.subscribe(self.callToken)
                 self.subscribedTokens.append(self.callToken)
 
@@ -122,11 +120,12 @@ class OptionUpdate:
 
         if putPrice != self.putPrice:
             self.putPrice = putPrice
-            self.putSymbol = "NIFTY " +  self.expiry_date.strftime("%d %b ").upper() + str(putPrice) + " PUT"
+            self.putSymbol = "NIFTY" + self.expiry_date.strftime('%d%b%y').upper() + "P" + str(putPrice)
+
             # self.shoonya_api.unsubscribe("NFO|"+ str(self.putToken))
-            self.putToken = self.dhan_helper.get_security_id(self.putSymbol, "NFO")
+            self.putToken = self.misc.get_token(self.putSymbol, "NFO")
             if self.putToken not in self.subscribedTokens:
-                self.shoonya_websocket.subscribe(str(self.putToken))
+                self.flattrade_websocket.subscribe(str(self.putToken))
                 # self.dhan_websocket.subscribe(self.putToken)
                 self.subscribedTokens.append(self.putToken)
             flag = 1
@@ -134,7 +133,7 @@ class OptionUpdate:
         if flag == 1 or firstFetch:
             websocketService.update_atm_options(self.callToken, self.callSymbol, self.putToken, self.putSymbol)
             websocketService.update_fut(self.fut_token, self.fut_symbol)
-            self.tradeManagement.updateOpenOrders()
+            # self.tradeManagement.updateOpenOrders() // TODO: fix orders
             # r.publish('channel1', f"{self.callToken} {self.callSymbol} {self.putToken} {self.putSymbol}")
             # changeChart(self.callToken)
 

@@ -24,6 +24,8 @@ app = FastAPI()
 # Include the routers
 app.include_router(riskController.router)
 app.include_router(testController.router)
+# # from services.riskManagement import riskManagementobj
+# from conf.dhanWebsocket import start_dhan_websocket
 app.include_router(orderController.router)
 app.include_router(pollingController.router)
 
@@ -42,8 +44,7 @@ async def startup_function():
     try:
         # Initialize the application with DI
         app_initializer.initialize_app(config)
-        app_initializer.di_container.get('dhan_websocket')
-        app_initializer.di_container.get('shoonya_websocket')
+        app_initializer.di_container.get('flattrade_websocket')
 
         risk_management = app_initializer.di_container.get('risk_management_service')
         risk_management.sanityCheck()
