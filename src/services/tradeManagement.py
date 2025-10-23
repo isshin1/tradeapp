@@ -21,6 +21,8 @@ import time
 import pandas as pd
 import threading
 
+from test import flattrade_killswitch
+
 
 class DemoAPI:
     """Demo API class that mimics Dhan API behavior for testing purposes"""
@@ -713,6 +715,35 @@ class TradeManagement:
 
         for token in self.tradeManager.trades:
             self.tradeManager.removeTrade(token)
+
+        # cancel all open orders
+        ob = self.flattrade_helper.get_order_book()
+        for i in ob.itertuples():
+            if i.status == 'TRIGGER_PENDING' or i.status == 'OPEN':
+                logger.debug(f"cancelling all orders")
+                logger.debug(f"running command flattrade_helper.cancel_order( {i})")
+                ret = self.flattrade_helper.cancel_order(i)
+                logger.debug(ret)
+
+        # get open positions
+        positions = self.flattrade_helper.get_positions()
+        positions['qty'] = positions['qty'].astype(int)
+        bought = positions.loc[positions['qty'] > 0]
+
+
+        for index, row in bought.iterrows():
+            qty = int(row["qty"])
+            tsym = row["tradingSymbol"]
+            token = int(row["tsym"])
+            entryPrice = float(row["avgprc"]) # TODO: is this correct field ?
+            if 'NIFTY' not in tsym:
+                continue
+
+            prd = "M"
+            order_update = {'quantity':qty, 'tradedPrice':entryPrice, 'displayName':tsym, 'product':  prd }
+            order_update['instrument'] = 'OPTIDX' if 'FUT' not in tsym else 'FUTIDX'
+            self.createTrade(token, order_update)
+            break
 
 
 
