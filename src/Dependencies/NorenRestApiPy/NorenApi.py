@@ -537,8 +537,8 @@ class NorenApi:
         reportmsg(res.text)
 
         resDict = json.loads(res.text)
-        if resDict['stat'] != 'Ok':            
-            return None
+        # if resDict['stat'] != 'Ok':
+        #     return None
 
         return resDict
 
@@ -586,8 +586,8 @@ class NorenApi:
         reportmsg(res.text)
 
         resDict = json.loads(res.text)
-        if resDict['stat'] != 'Ok':            
-            return None
+        # if resDict['stat'] != 'Ok':
+        #     return None
 
         return resDict
 

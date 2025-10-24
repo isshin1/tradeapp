@@ -44,6 +44,7 @@ class FlattradeHelper:
 
     def killswitch(self):
         logger.info('enabling flattrade killswitch')
+        self.exit_all_market_order()
         flattrade_killswitch = FlattradeKillswitch(self.cred)
         flattrade_killswitch.killswitch()
 
@@ -193,7 +194,7 @@ class FlattradeHelper:
                     logger.debug(
                         f"running command api.modify_order(exchange={exch}, trading_symbol={tsym}, orderno={norenordno},\
                         newquantity={qty}, newprice_type='MKT', newprice=0.00)")
-                    res = self.api.modify_order(exchange=exch, trading_symbol=tsym, orderno=norenordno,
+                    res = self.api.modify_order(exchange=exch, tradingsymbol=tsym, orderno=norenordno,
                                            newquantity=qty, newprice_type='MKT', newprice=0.00)
                     logger.info(f"res is {res}")
     
@@ -208,7 +209,7 @@ class FlattradeHelper:
                     logger.debug(
                         f"running command api.modify_order(exchange={exch}, trading_symbol={tsym}, orderno={norenordno}, \
                         newquantity={qty}, newprice_type='SL-LMT', newprice={new_price}, newtrigger_price={new_trigger_price})")
-                    res = self.api.modify_order(exchange=exch, trading_symbol=tsym, orderno=norenordno,
+                    res = self.api.modify_order(exchange=exch, tradingsymbol=tsym, orderno=norenordno,
                                            newquantity=qty, newprice_type='SL-LMT', newprice=new_price,
                                            newtrigger_price=new_trigger_price)
                     logger.info(f"res is {res}")
@@ -224,7 +225,7 @@ class FlattradeHelper:
                     logger.debug(
                         f"running command api.modify_order(exchange={exch}, trading_symbol={tsym}, orderno={norenordno}, \
                         newquantity={qty}, newprice_type='LMT', newprice={new_price})")
-                    res = self.api.modify_order(exchange=exch, trading_symbol=tsym, orderno=norenordno,
+                    res = self.api.modify_order(exchange=exch, tradingsymbol=tsym, orderno=norenordno,
                                            newquantity=qty, newprice_type='LMT', newprice=new_price)
                     logger.info(f"res is {res}")
     
@@ -258,7 +259,7 @@ class FlattradeHelper:
                          trading_symbol={trading_symbol}, quantity={quantity} , discloseqty=0 ,price_type='LMT', price=0.0, retention='DAY', remarks='market_order') ")
     
                     res = self.api.place_order(buy_or_sell=order_type, product_type=product_type, exchange=exchange,
-                                          trading_symbol=trading_symbol,
+                                          tradingsymbol=trading_symbol,
                                           quantity=quantity, discloseqty=0, price_type='MKT', price=0, trigger_price=None,
                                           retention='DAY', remarks='market_order')
                     logger.info(f"res is {res}")
@@ -275,7 +276,7 @@ class FlattradeHelper:
                         f"running command api.place_order(buy_or_sell={order_type}, product_type={product_type}, exchange={exchange},\
                          trading_symbol={trading_symbol}, quantity={quantity} , discloseqty=0 ,price_type='SL-LMT', price={price}, trigger_price={trigger_price}, retention='DAY', remarks='stop_loss_order')")
                     res = self.api.place_order(buy_or_sell=order_type, product_type=product_type, exchange=exchange,
-                                          trading_symbol=trading_symbol,
+                                          tradingsymbol=trading_symbol,
                                           quantity=quantity, discloseqty=0, price_type='SL-LMT', price=price,
                                           trigger_price=trigger_price,
                                           retention='DAY', remarks='stop_loss_order')
@@ -293,7 +294,7 @@ class FlattradeHelper:
                         f"running command api.place_order(buy_or_sell={order_type}, product_type={product_type}, exchange={exchange},\
                          trading_symbol={trading_symbol},quantity={quantity} , discloseqty=0 ,price_type='LMT', price={price}, retention='DAY', remarks='limit_order')")
                     res = self.api.place_order(buy_or_sell=order_type, product_type=product_type, exchange=exchange,
-                                          trading_symbol=trading_symbol,
+                                          tradingsymbol=trading_symbol,
                                           quantity=quantity, discloseqty=0, price_type='LMT', price=price, retention='DAY',
                                           remarks='limit_order')
                     logger.info(f"res is {res}")
@@ -315,7 +316,7 @@ class FlattradeHelper:
     
         try:
             while ('rejreason' in res):
-                orderno = order.norenordno  # from placeorder return value
+                orderno = order.norenordno  # from place_order return value
                 logger.debug(f"cancelling order {order}")
                 res = self.api.cancel_order(orderno)
                 logger.info(f"res is {res}")
@@ -403,11 +404,11 @@ class FlattradeHelper:
 
             if int(i.netqty) < 0:
                 logger.debug(f"closing short position {i} with market order")
-                self.placeOrder('B', i.prd, i.exch, i.tsym, abs(int(i.netqty)), 'MKT', 0)
+                self.place_order('B', i.prd, i.exch, i.tsym, abs(int(i.netqty)), 'MKT', 0)
 
             if int(i.netqty) > 0:
                 logger.debug(f"closing long position {i} with market order")
-                self.placeOrder('S', i.prd, i.exch, i.tsym, int(i.netqty), 'MKT', 0)
+                self.place_order('S', i.prd, i.exch, i.tsym, int(i.netqty), 'MKT', 0)
 
     
     def update_ema(self, token, hour, minute):

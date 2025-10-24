@@ -72,11 +72,11 @@ class RiskManagement:
 
         self.update()
         logger.info(f"turning killswitch on with trades {self.trade_count} and pnl {self.pnl}")
-        self.flattrade_helper.cancel_all_orders()
-        self.dhan_helper.kill_switch('ON')
-        if force:
-            self.dhan_helper.kill_switch('OFF')
-            return self.dhan_helper.kill_switch('ON')
+        self.flattrade_helper.killswitch()
+        # self.dhan_helper.kill_switch('ON')
+        # if force:
+        #     self.dhan_helper.kill_switch('OFF')
+        #     return self.dhan_helper.kill_switch('ON')
 
     def killswitch(self):
         if self.maxLossCrossed():

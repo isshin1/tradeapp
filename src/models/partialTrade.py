@@ -28,7 +28,6 @@ class PartialTrade:
         self.dpsCrossed = []
         self.targetModified = False
         self.points = 0
-        self.exch = "NSE_NFO"
 
     def __str__(self):
         return json.dumps({

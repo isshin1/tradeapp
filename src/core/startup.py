@@ -12,7 +12,6 @@ from fastapi import HTTPException
 import requests
 
 from conf.config import BASE_DIR, get_date_folders, config
-from conf.dhanWebsocket import DhanWebsocket
 from conf.logging_config import logger
 from conf.flattradeWebsocket import FlattradeWebsocket
 from conf.websocketService import ConnectionManager
@@ -22,7 +21,6 @@ from services.optionUpdate import OptionUpdate
 from services.orderManagement import OrderManagement
 from services.riskManagement import RiskManagement
 from services.tradeManagement import TradeManagement
-from utils.dhanHelper import DhanHelper, DhanAuthAutomation
 from utils.shoonyaHelper import ShoonyaHelper
 from utils.misc import Misc
 from utils.shoonyaApiHelper import ShoonyaApiPy

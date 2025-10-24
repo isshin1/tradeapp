@@ -21,7 +21,6 @@ import time
 import pandas as pd
 import threading
 
-from test import flattrade_killswitch
 
 
 class DemoAPI:
@@ -464,7 +463,7 @@ class TradeManagement:
 
             trade1 = PartialTrade(
                 name="trade1", status=0, qty=qty1, entryPrice=entryPrice, slPrice=entryPrice-slPrice, maxSlPrice=entryPrice-maxSlPrice,
-                targetPoints=target1, orderType="STOP_LOSS", prd=prd, exch="NSE_NFO", tsym=tsym,
+                targetPoints=target1, orderType="STOP_LOSS", prd=prd, exch="NFO", tsym=tsym,
                 diff=diff, token=token, optionType=optionType
             )
             self.tradeManager.addTrade(token, trade1)
@@ -474,7 +473,7 @@ class TradeManagement:
             if qty2 > 0:
                 trade2 = PartialTrade(
                         name="trade2", status=0, qty=qty2, entryPrice=entryPrice, slPrice=entryPrice-slPrice, maxSlPrice=entryPrice-maxSlPrice,
-                        targetPoints=target2, orderType="STOP_LOSS", prd=prd, exch="NSE_NFO", tsym=tsym,
+                        targetPoints=target2, orderType="STOP_LOSS", prd=prd, exch="NFO", tsym=tsym,
                         diff=diff, token=token, optionType=optionType
                     )
 
@@ -727,12 +726,12 @@ class TradeManagement:
 
         # get open positions
         positions = self.flattrade_helper.get_positions()
-        positions['qty'] = positions['qty'].astype(int)
-        bought = positions.loc[positions['qty'] > 0]
+        positions['netqty'] = positions['netqty'].astype(int)
+        bought = positions.loc[positions['netqty'] > 0]
 
 
         for index, row in bought.iterrows():
-            qty = int(row["qty"])
+            qty = int(row["netqty"])
             tsym = row["tradingSymbol"]
             token = int(row["tsym"])
             entryPrice = float(row["avgprc"]) # TODO: is this correct field ?
@@ -782,13 +781,13 @@ class TradeManagement:
             token = int(post_entry_df.iloc[0]['token'])
             trade1 = PartialTrade(
                 name="trade1", status=0, qty=150, entryPrice=entryPrice, slPrice=entryPrice-10, maxSlPrice=entryPrice-12,
-                targetPoints= target1, orderType="STOP_LOSS", prd='INTRADAY', exch="NSE_NFO", tsym=tsym,
+                targetPoints= target1, orderType="STOP_LOSS", prd='INTRADAY', exch="NFO", tsym=tsym,
                 diff=0.2, token=token, optionType=optionType, startTime=time
             )
 
             trade2 = PartialTrade(
                 name='trade2', status=0, qty=75, entryPrice=entryPrice, slPrice=entryPrice-10, maxSlPrice=entryPrice-12,
-                targetPoints=target2, orderType="STOP_LOSS", prd='INTRADAY', exch="NSE_NFO", tsym=tsym,
+                targetPoints=target2, orderType="STOP_LOSS", prd='INTRADAY', exch="NFO", tsym=tsym,
                 diff=0.2, token=token, optionType=optionType, startTime=time
             )
 
