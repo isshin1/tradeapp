@@ -216,10 +216,12 @@ class TradeManagement:
 
             else:
                 logger.error(
-                    "Placing order: security_id={}, exchange_segment={}, transaction_type={}, quantity={}, order_type={}, product_type={}, price={}, trigger_price={}",
-                                    trade.token, "NSE_FNO", "SELL" ,trade.qty, "STOP_LOSS", trade.prd,
-                                    trade.slPrice - trade.diff, trade.slPrice
+                    f"Placing order: security_id={trade.token}, exchange_segment=NSE_FNO, "
+                    f"transaction_type=SELL, quantity={trade.qty}, order_type=STOP_LOSS, "
+                    f"product_type={trade.prd}, price={trade.slPrice - trade.diff}, "
+                    f"trigger_price={trade.slPrice}"
                 )
+
                 logger.error(f"{mode_prefix}{trade.name} error in placing sl order {res['remarks']} ")
 
             self.tradeManager.updatePartialTrade(trade)
@@ -761,8 +763,10 @@ class TradeManagement:
                     validity = 'DAY')
 
                     logger.info(
-                        "{}, LMT order of trade {} got modified from {} to {}".format(mode_prefix, trade.name, entryPrice + initialTargetPoints,
-                                                                                  entryPrice + trade.targetPoints))
+                        f"{mode_prefix}, LMT order of trade {trade.name} got modified "
+                        f"from {entryPrice + initialTargetPoints} to {entryPrice + trade.targetPoints}"
+                    )
+
                     logger.info(ret)
         logger.info(f"{mode_prefix}targets modified")
         websocketService.send_toast(f"{mode_prefix}Targets Update request", "Targets Updated")
