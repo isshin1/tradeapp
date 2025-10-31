@@ -186,22 +186,26 @@ class TradeRequest(BaseModel):
         self.time = datetime.fromisoformat(self.time)
         self.expiry = datetime.fromisoformat(self.expiry)
 #
-# # @router.post("/api/tradeCheck")
-# # async def tradeCheck( background_tasks: BackgroundTasks, trade: TradeRequest ):
-# #     trade.to_datetime()
-# #     # token = trade.token
-# #
-# #     time = trade.time
-# #     expiry = trade.expiry
-# #     dps = trade.dps
-# #
-# #     # tsym = 'NIFTY ' +  expiry.strftime('%d %b ').upper() + str(strike_price) +  ' ' +optionType
-# #     tsym = trade.tsym
-# #     # run_feed(time, expiry, tsym, dps)
-# #     background_tasks.add_task(run_feed,  time, expiry , tsym, dps)
-# #
-# #     return {"message": "Trade started, not waiting for completion"}
-# #     # run()
+@router.post("/api/trade_test")
+async def tradeCheck(
+        background_tasks: BackgroundTasks,
+        trade: TradeRequest,
+        tradeManagement: Annotated[object, Depends(get_trade_management)]
+        ):
+    trade.to_datetime()
+
+    time = trade.time
+    expiry = trade.expiry
+    dps = trade.dps
+
+    # tsym = 'NIFTY ' +  expiry.strftime('%d %b ').upper() + str(strike_price) +  ' ' +optionType
+    tsym = trade.tsym
+    # run_feed(time, expiry, tsym, dps)
+    tradeManagement.run_feed(time, expiry, tsym, dps)
+    # background_tasks.add_task(tradeManagement.run_feed,  time, expiry , tsym, dps)
+
+    return {"message": "Trade started, not waiting for completion"}
+    # run()
 #
 @router.post("/api/tradeCheckOld")
 async def tradeCheck(

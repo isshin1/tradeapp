@@ -186,7 +186,7 @@ class CandlestickData:
                 # df = self.getTokenDf(fut_token)
                 # filtered_df = df[df['time'] >= trade.startTime].reset_index(drop=True)
                 result_low_date = filtered_df.loc[0, 'time']
-
+                result_low_date = None
                 for idx in reversed(filtered_df.index):
                     if filtered_df.loc[idx, 'high'] > closest_dp_price and filtered_df.loc[idx, 'low'] < closest_dp_price:
                         result_low_idx = idx

@@ -1,6 +1,9 @@
 # from Dhan_Tradehull import Tradehull
 import random
 from datetime import datetime, timedelta
+import re
+
+from pandas import Timestamp
 
 from conf import websocketService
 # from conf.config import     position_folder
@@ -39,12 +42,20 @@ class DemoAPI:
     def _simulate_delay(self):
         time.sleep(random.uniform(0.05, 0.15))
 
-    def place_order(self, security_id, exchange_segment, transaction_type,
-                    quantity, order_type, product_type, price=0, trigger_price=0):
+    def place_order(self, trading_symbol, exchange, order_type,
+                    quantity, price_type, product_type,
+                    price=0, trigger_price=0):
+
         self._simulate_delay()
         order_id = self._generate_order_id()
 
-        # 5% chance of order rejection
+        # Convert to internal format
+        security_id = trading_symbol  # direct passthrough
+        exchange_segment = exchange  # direct passthrough
+        transaction_type = order_type  # 'B' / 'S'
+        exec_type = price_type  # 'SL-LMT', 'LMT', 'MKT', etc.
+
+        # 5% chance of simulated rejection
         if random.random() < 0.05:
             return {
                 'status': 'failure',
@@ -57,7 +68,7 @@ class DemoAPI:
             'exchangeSegment': exchange_segment,
             'transactionType': transaction_type,
             'quantity': quantity,
-            'orderType': order_type,
+            'orderType': exec_type,
             'productType': product_type,
             'price': price,
             'triggerPrice': trigger_price,
@@ -67,8 +78,9 @@ class DemoAPI:
             'timestamp': datetime.now().isoformat()
         }
 
-        logger.info(f"DEMO: Placed {order_type} order {order_id} for {quantity} qty of {security_id}")
-        return {'status': 'success', 'data': {'orderId': order_id}}
+        logger.info(f"DEMO: Placed {exec_type} order {order_id} "
+                    f"({transaction_type}) {quantity} qty of {security_id}")
+        return {'stat': 'Ok', 'norenordno': order_id}
 
     def cancel_order(self, OrderID):
         self._simulate_delay()
@@ -78,21 +90,30 @@ class DemoAPI:
             return 'CANCELLED'
         return 'ORDER_NOT_FOUND'
 
-    def modify_order(self, order_id, order_type, leg_name, quantity,
-                     price, trigger_price=0, disclosed_quantity=0, validity='DAY'):
+    def modify_order(self, norenordno, new_price_type, qty, new_price,
+                     exch=None, tsym=None, new_trigger_price=0,
+                     disclosed_quantity=0, validity='DAY'):
+
         self._simulate_delay()
+
+        order_id = norenordno
+        order_type = new_price_type  # 'LMT' / 'MKT' / etc.
+        quantity = qty
+        price = new_price
+
         if order_id in self.demo_orders:
             order = self.demo_orders[order_id]
             order.update({
                 'orderType': order_type,
                 'quantity': quantity,
                 'price': price,
-                'triggerPrice': trigger_price,
-                'validity': validity
+                'triggerPrice': new_trigger_price,
+                'validity': validity,
             })
             logger.info(f"DEMO: Modified order {order_id}")
             return {'status': 'success', 'message': 'Demo order modified'}
-        return {'status': 'failure', 'message': 'Demo order not found'}
+
+        return {'stat': 'Ok', 'norenordno': order_id}
 
     def get_order_status(self, order_id):
         return self.demo_orders.get(order_id, {}).get('orderStatus', 'ORDER_NOT_FOUND')
@@ -177,7 +198,7 @@ class TradeManagement:
         """Return demo API if in demo mode, otherwise return real API"""
         if self.demo_mode:
             return self.demo_api
-        return self.flattrade_api
+        return self.flattrade_helper
 
     def placeSl(self, trade:PartialTrade):
         if trade.status != 0:
@@ -188,7 +209,7 @@ class TradeManagement:
 
             logger.info(f"{mode_prefix}placing sl order for {trade.name} and token {trade.token}")
 
-            res = self.flattrade_helper.place_order(
+            res = api.place_order(
                  order_type = 'S',
                  product_type = trade.prd,
                  exchange = trade.exch,
@@ -244,7 +265,7 @@ class TradeManagement:
                     logger.info(f"{mode_prefix}modifying trade {trade.__str__()}")
 
                     try:
-                        res = self.flattrade_helper.modify_order(
+                        res = api.modify_order(
                             exch= trade.exch,
                             tsym = trade.tsym,
                             norenordno = trade.orderNumber,
@@ -257,7 +278,7 @@ class TradeManagement:
                         if res['stat'] == "Ok" and 'norenordno' in res:
                             logger.info(f"{mode_prefix}modified placed {trade.name} limit order")
                             logger.info(res)
-                            trade.orderNumber = res['data']['orderId']
+                            trade.orderNumber =  res['norenordno']
                             trade.orderType = "LMT"
                             logger.info(
                                 f"{mode_prefix}{trade.name} sl order modified from STOP_LOSS to LMT with target {trade.entryPrice + trade.targetPoints}")
@@ -272,7 +293,7 @@ class TradeManagement:
                     logger.info(f"{mode_prefix}modifying target order from LIMIT to STOP_LOSS")
 
                     try:
-                        res = self.flattrade_helper.modify_order(
+                        res = api.modify_order(
                             exch=trade.exch,
                             tsym=trade.tsym,
                             norenordno=trade.orderNumber,
@@ -285,7 +306,7 @@ class TradeManagement:
                         if res['stat'] == "Ok" and 'norenordno' in res:
                             logger.info(f"{mode_prefix}modified placed {trade.name} sl order")
                             logger.info(res)
-                            trade.orderNumber = res['data']['orderId']
+                            trade.orderNumber = res['norenordno']
                             trade.orderType = "STOP_LOSS"
                             logger.info(f"{mode_prefix}{trade.name} limit order modified from LIMIT to STOP_LOSS with sl {trade.slPrice}")
                         else:
@@ -308,8 +329,13 @@ class TradeManagement:
         if trade.targetPoints == 0:
             current_trailing_sl = trade.slPrice
             try:
+                if current_time == Timestamp('2025-10-29 13:39:11'):
+                    pass
+                else:
+                    return
                 ## (A) keeping sl 3 points below latest swing point
-                if current_time.second % 10 == 0:
+                if current_time.second % 1 == 0:
+
                     # logger.info(f"{mode_prefix}trail check for new swing point")
                     df = candlestickData.getTokenDf(trade.token)
                     new_sl_time = candlestickData.getMspLow(self.nifty_fut_token, trade)
@@ -326,17 +352,25 @@ class TradeManagement:
                 logger.error(f"{mode_prefix}error in fetching last swing point at time {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
                 logger.error(e)
 
-            ## (B) keeping sl 20% below trade peak points
+            ## (B) keeping sl 20% below trade peak price
             new_sl = round(ltp * 0.8, 1)
             if new_sl > current_trailing_sl + 5:
-                logger.info(f"{mode_prefix}{trade.name} modifying sl from {current_trailing_sl} to {new_sl} at time {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
+                logger.info(f"{mode_prefix}{trade.name} modifying sl to be 20% below peak price from {current_trailing_sl} to {new_sl} at time {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
                 current_trailing_sl = new_sl
 
-            ## (C) modify sl 3 point below crossed dp
+            ## (B) keeping sl 20 pts below peak price
+            new_sl = round(ltp - 20 , 1)
+            if new_sl > current_trailing_sl + 5:
+                logger.info(f"{mode_prefix}{trade.name} modifying sl to be 20 points below peak price from {current_trailing_sl} to {new_sl} at time {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
+                current_trailing_sl = new_sl
+
+            ## (D) modify sl 3 point below crossed dp
 
             try:
                 if current_time.second % 10 == 0:
                     # logger.info(f"{mode_prefix}trail check for DP cross")
+                    # if current_time == Timestamp('2025-10-29 13:39:11'):
+                    #     pass
                     df = candlestickData.getTokenDf(trade.token)
                     fut_latest_price = candlestickData.getLatestPrice(self.nifty_fut_token)
                     new_sl_time, dp_price = candlestickData.getCrossedDp(fut_latest_price, self.nifty_fut_token,
@@ -355,8 +389,8 @@ class TradeManagement:
             # actually modifying sl if its not same as previous sl
             if current_trailing_sl != trade.slPrice:
                 logger.info(
-                    f"{mode_prefix}modifying trailing sl from {current_trailing_sl} to {trade.slPrice} at time {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-                res = self.flattrade_helper.modify_order(
+                    f"{mode_prefix} {trade.name} placing order to modify trailing sl from {trade.slPrice} to {current_trailing_sl} at time {current_time}")
+                res = api.modify_order(
                     exch=trade.exch,
                     tsym=trade.tsym,
                     norenordno=trade.orderNumber,
@@ -370,11 +404,11 @@ class TradeManagement:
                 logger.info(res)
 
             if ltp < trade.slPrice:
-                logger.info(f"{mode_prefix} {trade.name} sl passed, trade exitd with points {round(ltp - trade.entryPrice)}")
+                logger.info(f"{mode_prefix} {trade.name} sl passed, trade exitd with points {round(ltp - trade.entryPrice)} at time {current_time}")
                 trade.status = 2
 
             if ltp < trade.maxSlPrice:
-                logger.info(f"{mode_prefix}max permitted sl passed, exiting all trades with market orders")
+                logger.info(f"{mode_prefix}max permitted sl passed, exiting all trades with market orders at {current_time}")
                 self.exit_all_trades(trade)
 
             self.tradeManager.updatePartialTrade(trade)
@@ -387,7 +421,7 @@ class TradeManagement:
             api = self._get_api()
             mode_prefix = "DEMO: " if self.demo_mode else ""
 
-            res = self.flattrade_helper.modify_order(
+            res = api.modify_order(
                 exch=trade.exch,
                 tsym=trade.tsym,
                 norenordno=trade.orderNumber,
@@ -457,6 +491,7 @@ class TradeManagement:
             slPrice, maxSlPrice, minLotSize, diff, target1, target2 = self.misc.get_sl_and_max_sl_price(instrument, tsym)
             optionType = tsym[-6]
 
+            slPrice = max(round(slPrice, 1), 3)
             half = qty // 2
             qty2 = (half // minLotSize) * minLotSize
             qty1 = qty - qty2
@@ -521,7 +556,7 @@ class TradeManagement:
                             else:
                                 logger.info(f"{mode_prefix}modifying sl for {partial_trade.name}")
                                 future = executor.submit(
-                                    self.flattrade_helper.modify_order,
+                                    api.modify_order,
                                     exch=partial_trade.exch,
                                     tsym=partial_trade.tsym,
                                     norenordno=partial_trade.orderNumber,
@@ -686,7 +721,7 @@ class TradeManagement:
 
                 # change limit order price if already in place
                 if trade.orderType == "LMT":
-                    ret = self.flattrade_helper.modify_order(
+                    ret = api.modify_order(
                         exch=trade.exch,
                         tsym=trade.tsym,
                         norenordno=trade.orderNumber,
@@ -716,16 +751,16 @@ class TradeManagement:
             self.tradeManager.removeTrade(token)
 
         # cancel all open orders
-        ob = self.flattrade_helper.get_order_book()
+        ob = api.get_order_book()
         for i in ob.itertuples():
             if i.status == 'TRIGGER_PENDING' or i.status == 'OPEN':
                 logger.debug(f"cancelling all orders")
                 logger.debug(f"running command flattrade_helper.cancel_order( {i})")
-                ret = self.flattrade_helper.cancel_order(i)
+                ret = api.cancel_order(i)
                 logger.debug(ret)
 
         # get open positions
-        positions = self.flattrade_helper.get_positions()
+        positions = api.get_positions()
         positions['netqty'] = positions['netqty'].astype(int)
         bought = positions.loc[positions['netqty'] > 0]
 
@@ -746,7 +781,7 @@ class TradeManagement:
 
 
 
-        # self.flattrade_helper.exit_all_market_order()
+        # api.exit_all_market_order()
 
 
     def run_feed( self, time, expiry, tsym , dps = [] ):
@@ -761,11 +796,28 @@ class TradeManagement:
             feed_df['time'] = pd.to_datetime(feed_df['time'], format='%Y-%m-%dT%H:%M:%S')
             # token = dhan_api.get_security_id(tsym , "NFO")
             # tsym = "NIFTY 27 MAR 23650 CALL"
-            optionType = tsym.split(' ')[-1]
 
-            expiry_day = int(tsym.split(' ')[1])
-            expiry_month = int(datetime.strptime(tsym.split(' ')[2].title(), '%b').strftime('%m'))
-            expiry = datetime(datetime.now().year, expiry_month, expiry_day)
+            #dhan
+            optionType = tsym.split(' ')[-1]
+            # expiry_day = int(tsym.split(' ')[1])
+            # expiry_month = int(datetime.strptime(tsym.split(' ')[2].title(), '%b').strftime('%m'))
+            # expiry = datetime(datetime.now().year, expiry_month, expiry_day)
+
+            #shoonya/flattrade
+            # option_flag = ''.join(filter(str.isalpha, tsym[-5:]))[0]  # gets 'C' from 'C26000'
+            m = re.search(r'([CP])(?=\d+$)', tsym, re.IGNORECASE)
+            optionType = "CALL" if m.group(1).upper() == "C" else "PUT"
+            underlying = tsym[:5]  # 'NIFTY'
+            day = int(tsym[5:7])  # 04
+            month_str = tsym[7:10]  # 'NOV'
+            year = int(tsym[10:12])  # 25
+
+            option_type = tsym[12]  # 'C'
+            strike = int(tsym[13:])  # 26000
+
+            expiry_month = datetime.strptime(month_str, '%b').month
+            expiry_year = 2000 + year  # assume 2000-2099
+            expiry = datetime(expiry_year, expiry_month, day)
             # add decision points
 
 
@@ -824,7 +876,8 @@ class TradeManagement:
 
             if self.tradeManager.isTradeActive():
                 trade =  next((trade for trades in [self.tradeManager.getTrades(token) for token in self.tradeManager.trades] for trade in trades.values() if trade.name == "trade2"), None)
-                logger.info(f"{trade.name} ended at day close at price {opt_price} with points {round(opt_price - entryPrice)} and max price {trade.maxPrice}")
+                if trade.status != 2:
+                    logger.info(f"{trade.name} ended at day close at price {opt_price} with points {round(opt_price - entryPrice)} and max price {trade.maxPrice}")
         except Exception as e:
             logger.error(e)
 

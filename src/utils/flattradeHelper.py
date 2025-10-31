@@ -450,6 +450,14 @@ def get_sid():
 class FlattradeAuthAutomation:
     def __init__(self, cred):
         self.cred = cred
+        self.token_path = "/tmp/flattrade_token.txt"
+
+    def check_session(self, api):
+        try:
+            pos = api.get_positions()
+            return True
+        except Exception as e:
+            return False
 
     def get_token(self):
         sid = get_sid()
@@ -505,8 +513,28 @@ class FlattradeAuthAutomation:
         # api = NorenApiPy()
         cred = self.cred
         username = cred['user']
-        auth_token = self.get_token()
-        return api.set_session(userid= username, password = '', usertoken= auth_token)
+
+        if os.path.exists(self.token_path):
+            try:
+                with open(self.token_path, "r") as f:
+                    auth_token = f.read().strip()
+                api.set_session(userid= username, password = '', usertoken= auth_token)
+            except Exception as e:
+                print(f"Failed to read token file: {e}")
+
+        if not self.check_session(api):
+        # if True:
+            auth_token = self.get_token()
+            api.set_session(userid= username, password = '', usertoken= auth_token)
+            try:
+                with open(self.token_path, "w") as f:
+                    f.write(auth_token)
+            except Exception as e:
+                print(f"Could not save token: {e}")
+
+        return api
+
+
 
 class FlattradeKillswitch():
     def __init__(self, cred):
@@ -518,6 +546,15 @@ class FlattradeKillswitch():
             "Referer": "https://auth.flattrade.in/",
             "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) Python-requests",
         }
+
+    def token_validation(self):
+        url = "https://wallapi.flattrade.in/wall/tokenValidation"
+        headers = self.headers
+        responseA = self.s.get(url, headers=headers)
+
+        headers["TE"] = "trailers"
+        responseB = self.s.get(url, headers=headers)
+        print(responseA.json(), responseB.json())
 
     def get_login_token(self):
         url = 'https://authapi.flattrade.in/ftauth'
@@ -558,11 +595,53 @@ class FlattradeKillswitch():
         token = response.json().get("token")
         return token
 
+    def get_killswitch_status(self):
+        url2 = 'https://wallapi.flattrade.in/wall/KillSwitch'
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) Python-requests",
+            'Accept': 'application/json',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate, br, zstd',
+            'Origin': 'https://wall.flattrade.in',
+            'Sec-GPC': '1',
+            'Connection': 'keep-alive',
+            'Referer': 'https://wall.flattrade.in/',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'same-site',
+            'DNT': '1',
+            'Content-Type': 'application/json'
+        }
+
+        response = self.s.get(url2, headers=headers)
+        data = response.json()
+        # Get all NFO entries
+        nfo_segments = [seg for seg in data["segmentDetailsArr"] if seg["segment"] == "BFO"]
+
+        # Get the latest NFO segment (based on disabledDate, if multiple)
+        latest_nfo = max(nfo_segments, key=lambda x: x["disabledDate"])
+
+        # Extract the status
+        status = latest_nfo["status"]
+        print("Latest NFO status:", status)
+        if status == 'D':
+            return True
+        return False
+
     def killswitch(self):
         self.s = requests.Session()
+        self.token_validation()
         self.sid = get_sid()
         token = self.get_session_token()
+        self.token_validation()
 
+        killswitch_status = self.get_killswitch_status()
+        if killswitch_status:
+            logger.info("Kill switch is already active")
+            return
+
+        logger.info("enabling killswitch")
         url = 'https://wallapi.flattrade.in/wall/InsertSegmentDetails'
 
         headers = {
@@ -583,16 +662,8 @@ class FlattradeKillswitch():
         payload =[
             {"segment":"BFO","segmentDisplay":"BSE - Future & Option","status":"N","disabledDate":""},
             {"segment":"NFO","segmentDisplay":"NSE - Future & Option","status":"N","disabledDate":""},
-            # {"segment": "BSE", "segmentDisplay": "BSE - Equity", "status": "N", "disabledDate": ""}
         ]
         response = self.s.post(url, json=payload, headers=headers)
         print(f"Response: {response.text}")
 
-        url2 = 'https://wallapi.flattrade.in/wall/KillSwitch'
-
-        response = self.s.get(url2, headers=headers)
-        print("KillSwitch Response:")
-        print(f"Status Code: {response.status_code}")
-        print(f"Response: {response.text}")
-
-
+        self.get_killswitch_status()
