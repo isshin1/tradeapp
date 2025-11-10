@@ -21,9 +21,9 @@ class RiskManagement:
         self.pnl = 0
         self.peakPnl = 0
         self.tradeCount = 0
-        self.maxTradeCount = self.config['intraday']['maxTradeCount']
+        self.maxTradeCount = self.config['intraday']['max_trade_count']
         # self.qty = self.get_buy_qty('NIFTY')
-        self.maxLoss = self.config['intraday']['maxLoss']
+        self.maxLoss = self.config['intraday']['max_loss']
         self.lastTradeTime = datetime.today().replace(hour=0, minute=0)
         self.margin = self.dhan_helper.get_balance()
 

@@ -27,6 +27,7 @@ class DhanWebsocket:
     def __init__(self, di_container):
         self.di_container = di_container
         self._trade_management = None
+        self._risk_management = None
         self.config = self.di_container.get('config')
         self.dhan_context = self.di_container.get('dhan_context')
         self.dhan_helper = self.di_container.get('dhan_helper')
@@ -66,10 +67,27 @@ class DhanWebsocket:
             self._trade_management = self.di_container.get('trade_management_service')
         return self._trade_management
 
+    @property
+    def riskManagementobj(self):
+        if self._risk_management is None:
+            self._risk_management = self.di_container.get('risk_management_service')
+        return self._risk_management
+
+    def on_order_update(self, order_data: dict):
+        try:
+            self.trade_management.on_order_update(order_data)
+        except Exception as e:
+            logger.error(f"Error in trade_management on_order_update: {e}")
+
+        try:
+            self.riskManagementobj.sanityCheck()
+        except Exception as e:
+            logger.error(f"Error in riskManagementobj sanityCheck: {e}")
+
     def run_order_update(self):
         if self._order_client is None:
             self.order_client = OrderUpdate(self.dhan_context)
-            self.order_client.on_update = self.trade_management.on_order_update
+            self.order_client.on_update = self.on_order_update
         while True:
             try:
                 self.order_client.connect_to_dhan_websocket_sync()
