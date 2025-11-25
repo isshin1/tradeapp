@@ -30,6 +30,7 @@ class FlattradeWebsocket:
 
         self._option_update = None
         self._trade_management = None
+        self._risk_management = None
 
         self.feed_opened = False
         self.socket_opened = False
@@ -56,6 +57,13 @@ class FlattradeWebsocket:
         if self._trade_management is None:
             self._trade_management = self.di_container.get('trade_management_service')
         return self._trade_management
+
+    @property
+    def riskManagementobj(self):
+        if self._risk_management is None:
+            self._risk_management = self.di_container.get('risk_management_service')
+        return self._risk_management
+
 
 
     def initialize_feed_file(self):
@@ -157,8 +165,19 @@ class FlattradeWebsocket:
                         if token == str(self.current_chart_token):
                             tick = {'time': timest, 'price': float(feed_data['ltp']), 'volume': 0}
                             # chart.update_from_tick(pd.Series(tick))
+
+
     def update_orders(self, order_update):
-        self.trade_management.on_order_update(order_update)
+        try:
+            self.trade_management.on_order_update(order_update)
+        except Exception as e:
+            logger.error(f"Error in trade_management on_order_update: {e}")
+
+        try:
+            self.riskManagementobj.sanityCheck()
+        except Exception as e:
+            logger.error(f"Error in riskManagementobj sanityCheck: {e}")
+
 
     def event_handler_order_update(self, order_update):
         logger.debug(f"order feed {order_update}")
