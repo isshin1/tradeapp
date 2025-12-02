@@ -14,6 +14,8 @@ from conf.config import get_date_folders
 
 # from services.charts import chart
 # update nifty spot price in consul via feed
+MAX_TIMER_COUNT = 60   # seconds
+
 class FlattradeWebsocket:
     def __init__(self, di_container ):
         self.di_container = di_container
@@ -190,15 +192,62 @@ class FlattradeWebsocket:
         self.feed_opened = True
         print("Shoonya websocketService.py opened")
 
-    def setupWebSocket(self):
-        logger.info("waiting for flattrade websocket to open")
-        self.flattrade_api.start_websocket(order_update_callback=self.event_handler_order_update,
-                             subscribe_callback=self.event_handler_feed_update,
-                             socket_open_callback=self.open_callback)
-        while(self.feed_opened==False):
+
+    def _wait_for_open(self, timeout_seconds=MAX_TIMER_COUNT):
+        start = time.time()
+        while not self.feed_opened and (time.time() - start) < timeout_seconds:
             logger.info("waiting for flattrade websocket to open in a loop")
             time.sleep(1)
-            pass
+
+        if not self.feed_opened:
+            logger.error(f"flattrade websocket did not open in {timeout_seconds} seconds")
+            return False
+
+        return True
+
+    def setupWebSocket(self, max_retries=3):
+        logger.info("starting flattrade websocket with retry logic")
+        last_error = None
+
+        for attempt in range(1, max_retries + 1):
+            logger.info(f"[WS] Attempt {attempt}/{max_retries} to start websocket")
+
+            # reset flag before each attempt
+            self.feed_opened = False
+
+            # Start websocket (non-blocking; it spawns its own thread)
+            self.flattrade_api.start_websocket(
+                order_update_callback=self.event_handler_order_update,
+                subscribe_callback=self.event_handler_feed_update,
+                socket_open_callback=self.open_callback,
+                # optional: wire these if you want extra logs/logic
+                # socket_close_callback=self._on_socket_close,
+                # socket_error_callback=self._on_socket_error,
+            )
+
+            # Wait for websocket to authenticate and call open_callback()
+            if self._wait_for_open():
+                logger.info("[WS] flattrade websocket opened successfully")
+                return
+
+            # If we reach here, it didn't open in time.
+            logger.error("[WS] websocket did not open in time, closing and retrying...")
+
+            try:
+                self.flattrade_api.close_websocket()
+            except Exception as e:
+                last_error = e
+                logger.error(f"[WS] error while closing websocket: {e}")
+
+            # small backoff before the next attempt
+            time.sleep(5)
+
+        # All retries failed
+        logger.critical("[WS] Failed to open flattrade websocket after multiple attempts")
+        if last_error:
+            raise RuntimeError("flattrade websocket failed to start") from last_error
+        else:
+            raise RuntimeError("flattrade websocket failed to start")
 
     def subscribe(self, token, exchange="NFO"):
         # tsym = self.misc.getSymbol(token)
