@@ -80,7 +80,9 @@ class DhanWebsocket:
             logger.error(f"Error in trade_management on_order_update: {e}")
 
         try:
-            self.riskManagementobj.sanityCheck()
+            order_update = order_data.get("Data", {})
+            if order_update['txnType'] == 'S':
+                self.riskManagementobj.sanityCheck()
         except Exception as e:
             logger.error(f"Error in riskManagementobj sanityCheck: {e}")
 
