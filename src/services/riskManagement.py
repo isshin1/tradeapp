@@ -24,6 +24,7 @@ class RiskManagement:
         self.maxTradeCount = self.config['intraday']['max_trade_count']
         # self.qty = self.get_buy_qty('NIFTY')
         self.maxLoss = self.config['intraday']['max_loss']
+        self.maxProfit = self.config['intraday']['max_profit']
         self.lastTradeTime = datetime.today().replace(hour=0, minute=0)
         self.margin = self.dhan_helper.get_balance()
 
@@ -65,6 +66,9 @@ class RiskManagement:
             return True
         if self.pnl  <= -1 * self.maxLoss :
             logger.info("next trade will cross maxloss, auto exiting ")
+            return True
+        if self.pnl >= self.maxProfit:
+            logger.info("max profit crossed, daily target achieved")
             return True
         return False
 
